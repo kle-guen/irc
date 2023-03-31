@@ -46,9 +46,12 @@ int main()
     struct sockaddr_in address2;
     socklen_t len;
     int socket_client = accept(server_fd ,(struct sockaddr *)&address2, &len);
-
     char buff[BUFFER_SIZE];
-    recv(socket_client, buff, BUFFER_SIZE, 0);
-    std::cout << buff << std::endl;
+    while (buff[0]!= 0)
+    {
+        memset(buff,0,BUFFER_SIZE);
+        recv(socket_client, buff, BUFFER_SIZE, 0);
+        std::cout << buff;
+    }
     close(server_fd);
 }
