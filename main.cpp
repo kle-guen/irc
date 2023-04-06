@@ -9,20 +9,56 @@
 #include "Client.hpp"
 #define MAX_CLIENTS 10
 
+void erase_map_element(std::map<int,Client> &serveur,std::map<int,Client>::iterator it){
+    std::cout << it->first << " is erased"<< std::endl;
+    close(it->first);
+    serveur.erase(it);
+}
+
+void check_password(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password, std::string buffer){
+    if(password.compare(buffer) != 0)
+        erase_map_element(serveur, it);
+    else
+        it->second.setStatus(1);
+}
+
+void check_nick_name(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string buffer){
+    if(buffer.size() < 5 || buffer.compare(0,5,"NICK "))
+        erase_map_element(serveur, it);
+    else
+    {
+        it->second.setNick_name(buffer.substr(5,buffer.size() - 5));
+        it->second.setStatus(2);
+    }
+}
+
+void check_user_name(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string buffer){
+    if(buffer.size() < 5 || buffer.compare(0,5,"USER "))
+        erase_map_element(serveur, it);
+    else
+    {
+        it->second.setUser_name(buffer.substr(5,buffer.size() - 5));
+        it->second.setStatus(3);
+    }
+}
+
 void message_receiver(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password){
 
     //buffer de copy
-    char buffer[2048];
-    int len = recv(it->first,buffer,sizeof(buffer),0);
-    buffer[len - 1] = '\0';
-    std::cout << buffer << " "<< password << std::endl;
+    std::string buffer;
+    buffer.reserve(2048);
+    int status = it->second.getStatus();
+    char buffer_tmp[2048];
 
-    if(password.compare(buffer) != 0)
-    {
-        close(it->first);
-        serveur.erase(it);
-    }
-    std::cout << buffer <<std::endl;
+    int len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
+    buffer.append(buffer_tmp);
+    while(buffer.find_first_of("\n"))
+    if(status == 0)
+        check_password(serveur, it ,password, buffer);
+    else if(status == 1)
+        check_nick_name(serveur, it , buffer);
+    else if(status == 2)
+        check_user_name(serveur, it , buffer);
 }
 
 int main(int ac, char **av) {
@@ -36,7 +72,8 @@ int main(int ac, char **av) {
     //AF_INET = IPv4
     //SOCK_STREAM = flux de données bidirectionnel
     //0 = le protocole approprié sera choisi automatiquement en fonction du premier argument
-    std::string password(av[2]);
+    std::string password("PASS ");
+    password.append(av[2]);
     std::map<int,Client>::iterator it;
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in  server_addr;
