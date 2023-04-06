@@ -78,7 +78,8 @@ int main(int ac, char **av) {
         //checker de changement au nv du socket_client
         for (int i = 0; i < MAX_CLIENTS; i++) {
             if (FD_ISSET(client_socks[i], &read_fds)) {
-                recv(client_socks[i],buffer,sizeof(buffer),0);
+                int len = recv(client_socks[i],buffer,sizeof(buffer),0);
+                buffer[len] = '\0';
                 std::cout << buffer <<std::endl;
             }
         }
@@ -86,3 +87,4 @@ int main(int ac, char **av) {
 
     return 0;
 }
+
