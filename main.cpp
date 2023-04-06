@@ -5,18 +5,39 @@
 #include <arpa/inet.h>
 #include <iostream>
 #include <sys/select.h>
-
+#include <map>
+#include "Client.hpp"
 #define MAX_CLIENTS 10
 
-int main(int ac, char **av) {
-    if(ac != 2)
+void message_receiver(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password){
+
+    //buffer de copy
+    char buffer[2048];
+    int len = recv(it->first,buffer,sizeof(buffer),0);
+    buffer[len - 1] = '\0';
+    std::cout << buffer << " "<< password << std::endl;
+
+    if(password.compare(buffer) != 0)
     {
-        std::cout << "./irc [port]" << std::endl;
+        close(it->first);
+        serveur.erase(it);
+    }
+    std::cout << buffer <<std::endl;
+}
+
+int main(int ac, char **av) {
+    if(ac != 3)
+    {
+        std::cout << "./irc [port] [password]" << std::endl;
         return(1); 
     }
+    std::map<int,Client> serveur;
+
     //AF_INET = IPv4
     //SOCK_STREAM = flux de données bidirectionnel
     //0 = le protocole approprié sera choisi automatiquement en fonction du premier argument
+    std::string password(av[2]);
+    std::map<int,Client>::iterator it;
     int server_sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in  server_addr;
     struct sockaddr_in  tmp_client_addr;
@@ -36,14 +57,10 @@ int main(int ac, char **av) {
     fd_set read_fds;
     
     //slot de clients
-    int client_socks[MAX_CLIENTS] = {0};
+    // int client_socks[MAX_CLIENTS] = {0};
 
     //number de fd total a check pour select()
     int maxfd = server_sock;
-
-    //buffer de copy
-    char buffer[2048];
-
 
     while (1) {
 
@@ -51,10 +68,10 @@ int main(int ac, char **av) {
         FD_ZERO(&read_fds);
         FD_SET(server_sock, &read_fds);
 
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (client_socks[i] > 0){
-                FD_SET(client_socks[i], &read_fds);
-                maxfd = (client_socks[i] > maxfd) ? client_socks[i] : maxfd;
+        for (it = serveur.begin(); it != serveur.end(); it++) {
+            if (it->first > 0){
+                FD_SET(it->first, &read_fds);
+                maxfd = (it->first > maxfd) ? it->first : maxfd;
             }
         }
 
@@ -67,20 +84,16 @@ int main(int ac, char **av) {
             int tmp_client_socket;
             tmp_client_len = sizeof(tmp_client_addr);
             tmp_client_socket = accept(server_sock,(struct sockaddr*)&tmp_client_addr, &tmp_client_len);
-            for(int i = 0; i < MAX_CLIENTS;i++){
-                if(client_socks[i] == 0){
-                    client_socks[i] = tmp_client_socket;
-                break;
-                }
-            }
+            Client test;
+            serveur.insert(std::pair<int,Client>(tmp_client_socket,test));
         }
 
         //checker de changement au nv du socket_client
-        for (int i = 0; i < MAX_CLIENTS; i++) {
-            if (FD_ISSET(client_socks[i], &read_fds)) {
-                int len = recv(client_socks[i],buffer,sizeof(buffer),0);
-                buffer[len] = '\0';
-                std::cout << buffer <<std::endl;
+        for (it = serveur.begin();it != serveur.end(); it++) {
+            if (FD_ISSET(it->first, &read_fds)) {
+                message_receiver(serveur,it,password);
+                if(serveur.empty())
+                    break;
             }
         }
     }

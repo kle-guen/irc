@@ -8,6 +8,7 @@ RM			= rm -rf
 # SRCS:
 NAME		=   irc
 FILES		=	main.cpp \
+				Client.cpp \
 
 # OBJS
 SRCS		=	$(addprefix , $(FILES))	\
