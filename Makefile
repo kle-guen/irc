@@ -13,6 +13,7 @@ FILES		=	main.cpp \
 				Channel.cpp \
 				ACommand.cpp \
 				Join.cpp \
+				Privmsg.cpp \
 
 # OBJS
 SRCS		=	$(addprefix , $(FILES))	\

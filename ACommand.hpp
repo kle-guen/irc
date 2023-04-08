@@ -5,6 +5,7 @@
 # include <memory>
 
 class Join;
+class Privmsg;
 
 class ACommand
 {

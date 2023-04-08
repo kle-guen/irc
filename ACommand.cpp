@@ -1,5 +1,6 @@
 #include "ACommand.hpp"
 #include "Join.hpp"
+#include "Privmsg.hpp"
 
 ACommand::ACommand()
 {
@@ -31,7 +32,8 @@ void	ACommand::launchCommand(std::string buffer)
 {
 	std::vector<ACommand *> commands;
 
-    commands.push_back((new Join()));
+    commands.push_back(new Join());
+    commands.push_back(new Privmsg());
 	for (std::vector<ACommand *>::iterator it = commands.begin(); it != commands.end(); it++)
     {
         if ((*it)->_name.compare(buffer) == 0)
