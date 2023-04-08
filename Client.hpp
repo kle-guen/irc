@@ -42,14 +42,21 @@ public:
         command.append(str);
     }
 
-    void eraseBackslash_N(){
+    void eraseToBackslash_N(){
         int position = command.find_first_of('\n');
         if(position == -1)
-        {
-            std::cout << "no backslash_N found" << std::endl;
             return;
+        command.erase(0,position + 1);
+    }
+
+    void eraseBackslash_R(){
+        while(command.find_first_of('\r'))
+        {
+            int position = command.find_first_of('\r');
+            if(position == -1)
+                return;
+            command.erase(position,1);
         }
-        command.erase(position,position + 1);
     }
 
     std::string getCommand(){

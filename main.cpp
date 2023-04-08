@@ -9,22 +9,24 @@
 #include "Client.hpp"
 #define MAX_CLIENTS 10
 
-void erase_map_element(std::map<int,Client> &serveur,std::map<int,Client>::iterator it){
-    std::cout << it->first << " is erased"<< std::endl;
-    close(it->first);
-    serveur.erase(it);
+#define GREEN  "\e[32m"
+#define RED  "\e[31m"
+#define RESET  "\e[0m"
+
+void erase_map_element(){
+    std::cout << "["<< RED << "WRONG INPUT" << RESET << "]" << std::endl;
 }
 
-void check_password(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password, std::string buffer){
+void check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer){
     if(password.compare(buffer) != 0)
-        erase_map_element(serveur, it);
+        erase_map_element();
     else
         it->second.setStatus(1);
 }
 
-void check_nick_name(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string buffer){
+void check_nick_name(std::map<int,Client>::iterator& it, std::string buffer){
     if(buffer.size() < 5 || buffer.compare(0,5,"NICK "))
-        erase_map_element(serveur, it);
+        erase_map_element();
     else
     {
         it->second.setNick_name(buffer.substr(5,buffer.size() - 5));
@@ -32,9 +34,9 @@ void check_nick_name(std::map<int,Client> &serveur,std::map<int,Client>::iterato
     }
 }
 
-void check_user_name(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string buffer){
+void check_user_name(std::map<int,Client>::iterator& it, std::string buffer){
     if(buffer.size() < 5 || buffer.compare(0,5,"USER "))
-        erase_map_element(serveur, it);
+        erase_map_element();
     else
     {
         it->second.setUser_name(buffer.substr(5,buffer.size() - 5));
@@ -42,37 +44,71 @@ void check_user_name(std::map<int,Client> &serveur,std::map<int,Client>::iterato
     }
 }
 
+// void message_receiver(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password){
+
+//     //buffer de copy
+//     std::string buffer;
+//     buffer.reserve(2048);
+//     int status = it->second.getStatus();
+//     char buffer_tmp[2048];
+//     int len;
+//     (void)serveur;
+//     (void)password;
+//     len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
+//     buffer.append(buffer_tmp);
+//     buffer.erase(len,buffer.size() - len);
+//     if(buffer.find_first_of('\n') != (size_t)-1)
+//     {
+//         //do your command
+//         buffer_tmp[len - 1] = 0;
+//         it->second.appendCommand(buffer);
+//         std::cout << it->second.getCommand() << std::endl;
+//         it->second.eraseBackslash_N();
+//         if(status == 0)
+//             check_password(serveur, it ,password, it->second.getCommand());
+//         else if(status == 1)
+//             check_nick_name(serveur, it , it->second.getCommand());
+//         else if(status == 2)
+//             check_user_name(serveur, it , it->second.getCommand());
+//         it->second.resetCommand();
+//     }
+//     else
+//         it->second.appendCommand(buffer);
+// }
+
 void message_receiver(std::map<int,Client> &serveur,std::map<int,Client>::iterator it, std::string password){
 
     //buffer de copy
     std::string buffer;
     buffer.reserve(2048);
-    int status = it->second.getStatus();
     char buffer_tmp[2048];
     int len;
+
     (void)serveur;
     (void)password;
+    
     len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
     buffer.append(buffer_tmp);
     buffer.erase(len,buffer.size() - len);
-    if(buffer.find_first_of('\n') != (size_t)-1)
+    it->second.appendCommand(buffer);
+    while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
     {
         //do your command
-        buffer_tmp[len - 1] = 0;
-        it->second.appendCommand(buffer);
-        std::cout << it->second.getCommand() << std::endl;
-        it->second.eraseBackslash_N();
+        int status = it->second.getStatus();
+        it->second.eraseBackslash_R();
+        std::string tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
         if(status == 0)
-            check_password(serveur, it ,password, it->second.getCommand());
+            check_password(it ,password, tmp);
         else if(status == 1)
-            check_nick_name(serveur, it , it->second.getCommand());
+            check_nick_name(it , tmp); 
         else if(status == 2)
-            check_user_name(serveur, it , it->second.getCommand());
-        it->second.resetCommand();
+            check_user_name(it , tmp);
+        it->second.eraseToBackslash_N();
+        if(!it->second.getCommand().find_first_of('\n'))
+            it->second.resetCommand();
     }
-    else
-        it->second.appendCommand(buffer);
 }
+
 
 int main(int ac, char **av) {
     if(ac != 3)
