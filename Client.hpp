@@ -67,11 +67,11 @@ public:
         command.clear();
     }
     
-    void setNick_name(std::string name){
+    void setNickName(std::string name){
         nick_name = name;
     }
 
-    void setUser_name(std::string name){
+    void setUserName(std::string name){
         user_name = name;
     }
     //functions

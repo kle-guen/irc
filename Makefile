@@ -9,6 +9,10 @@ RM			= rm -rf
 NAME		=   irc
 FILES		=	main.cpp \
 				Client.cpp \
+				Server.cpp \
+				Channel.cpp \
+				ACommand.cpp \
+				Join.cpp \
 
 # OBJS
 SRCS		=	$(addprefix , $(FILES))	\
