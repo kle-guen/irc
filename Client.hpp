@@ -9,6 +9,7 @@ class Client
 private:
     std::string nick_name;
     std::string user_name;
+    std::string command;
     int status;
 protected:
 public:
@@ -35,6 +36,28 @@ public:
 
     void setStatus(int n){
         status = n;
+    }
+
+    void appendCommand(std::string str){
+        command.append(str);
+    }
+
+    void eraseBackslash_N(){
+        int position = command.find_first_of('\n');
+        if(position == -1)
+        {
+            std::cout << "no backslash_N found" << std::endl;
+            return;
+        }
+        command.erase(position,position + 1);
+    }
+
+    std::string getCommand(){
+        return(command);
+    }
+    
+    void resetCommand(){
+        command.clear();
     }
     
     void setNick_name(std::string name){

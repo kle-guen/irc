@@ -49,16 +49,29 @@ void message_receiver(std::map<int,Client> &serveur,std::map<int,Client>::iterat
     buffer.reserve(2048);
     int status = it->second.getStatus();
     char buffer_tmp[2048];
-
-    int len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
+    int len;
+    (void)serveur;
+    (void)password;
+    len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
     buffer.append(buffer_tmp);
-    while(buffer.find_first_of("\n"))
-    if(status == 0)
-        check_password(serveur, it ,password, buffer);
-    else if(status == 1)
-        check_nick_name(serveur, it , buffer);
-    else if(status == 2)
-        check_user_name(serveur, it , buffer);
+    buffer.erase(len,buffer.size() - len);
+    if(buffer.find_first_of('\n') != (size_t)-1)
+    {
+        //do your command
+        buffer_tmp[len - 1] = 0;
+        it->second.appendCommand(buffer);
+        std::cout << it->second.getCommand() << std::endl;
+        it->second.eraseBackslash_N();
+        if(status == 0)
+            check_password(serveur, it ,password, it->second.getCommand());
+        else if(status == 1)
+            check_nick_name(serveur, it , it->second.getCommand());
+        else if(status == 2)
+            check_user_name(serveur, it , it->second.getCommand());
+        it->second.resetCommand();
+    }
+    else
+        it->second.appendCommand(buffer);
 }
 
 int main(int ac, char **av) {
