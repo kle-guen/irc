@@ -1,1 +1,4 @@
 sic [-h host] [-p port] [-n nick] [-k keyword] [-v]
+
+exemple:
+./sic -h 127.0.0.1 -p 6667 -n alprival -k 123
