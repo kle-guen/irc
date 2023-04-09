@@ -8,11 +8,10 @@
 # include <stdlib.h>
 # include <sys/socket.h>
 # include <arpa/inet.h>
+# include <algorithm>
 
 # include "Client.hpp"
 # include "Channel.hpp"
-# include "ACommand.hpp"
-# include "Join.hpp"
 
 # define MAX_CLIENTS 10
 # define GREEN  "\e[32m"
@@ -38,7 +37,11 @@ class Server
         void choose_cmd(std::string buff,std::map<int,Client>::iterator it);
         void commandSend(std::string buff,std::map<int,Client>::iterator it);
         void commandPrivMsg(std::string buff,std::map<int,Client>::iterator it);
+        void commandKick(std::string buff,std::map<int,Client>::iterator client);
         void commandJoin(std::string buff,std::map<int,Client>::iterator it);
+        std::map<int,Client> ::iterator  find_socket_by_nick_name(std::string target);
+
+        std::map<std::string,Channel> getVchannel()const;
 
     private:
 

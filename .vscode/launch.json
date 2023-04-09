@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/nfs/homes/alprival/t/irc",
-            "args": ["1121","123"],
+            "args": ["1167","123"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

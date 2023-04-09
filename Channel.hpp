@@ -24,10 +24,15 @@ class Channel
         void addClient(int id);
         void sendMessage(std::string name, int id, std::string message);
         void setName(std::string name);
-        void removeClient(int id);
+        std::string getName() const;
+        void removeClient(int id,int id_remover);
+        void setPassword(std::string password);
+        std::string getPassword() const;
+
         ~Channel();
     private:
         std::string _name;
+        std::string _password;
         t_mode _mode;
         std::deque<int> _client_base;
 };

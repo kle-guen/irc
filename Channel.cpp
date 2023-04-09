@@ -43,9 +43,11 @@ void Channel::sendMessage(std::string name, int id, std::string message)
     }
 }
 
-void Channel::removeClient(int id)
+void Channel::removeClient(int id,int id_remover)
 {
     std::deque<int>::iterator it = this->_client_base.begin();
+    if (id_remover != *it)
+        return ;
     while(it!= this->_client_base.end())
     {
         if (id == *it)
@@ -55,6 +57,14 @@ void Channel::removeClient(int id)
         }
         it++;
     }
+}
+
+std::string Channel::getName() const{
+    return(_name);
+}
+
+std::string Channel::getPassword() const{
+    return(_password);
 }
 
 void Channel::addClient(int id)
@@ -74,6 +84,6 @@ void Channel::addClient(int id)
     this->_client_base.push_back(id);
 }
 
-// void setName(std::string name){
-
-// }
+void Channel::setPassword(std::string password){
+    _password = password;
+}
