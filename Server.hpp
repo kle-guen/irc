@@ -30,7 +30,7 @@ class Server
 
         void initServer(char **av);
         void message_receiver(std::map<int,Client>::iterator it, std::string password);
-        void erase_map_element(void);
+        void erase_map_element(std::map<int,Client>::iterator& it);
         void check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer);
         void check_nick_name(std::map<int,Client>::iterator& it, std::string buffer);
         void check_user_name(std::map<int,Client>::iterator& it, std::string buffer);

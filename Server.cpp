@@ -107,36 +107,37 @@ void    Server::message_receiver(std::map<int,Client>::iterator it, std::string 
     while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
     {
         //do your command
-        //int status = it->second.getStatus();
+        int status = it->second.getStatus();
         it->second.eraseBackslash_R();
         std::string tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
         ACommand::launchCommand(tmp);
-        /*if(status == 0)
+        if(status == 0)
             check_password(it ,password, tmp);
         else if(status == 1)
             check_nick_name(it , tmp); 
         else if(status == 2)
-            check_user_name(it , tmp);*/
+            check_user_name(it , tmp);
         it->second.eraseToBackslash_N();
         if(!it->second.getCommand().find_first_of('\n'))
             it->second.resetCommand();
     }
 }
 
-void Server::erase_map_element(){
-    std::cout << "["<< RED << "WRONG INPUT" << RESET << "]" << std::endl;
+void Server::erase_map_element(std::map<int,Client>::iterator& it){
+    //std::cout << "["<< RED << "WRONG INPUT" << RESET << "]" << std::endl;
+    send(it->first,"[WRONG INPUT]\n",14,0);
 }
 
 void Server::check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer){
     if(password.compare(buffer) != 0)
-        erase_map_element();
+        erase_map_element(it);
     else
         it->second.setStatus(1);
 }
 
 void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buffer){
     if(buffer.size() < 5 || buffer.compare(0,5,"NICK "))
-        erase_map_element();
+        erase_map_element(it);
     else
     {
         it->second.setNickName(buffer.substr(5,buffer.size() - 5));
@@ -146,7 +147,7 @@ void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buf
 
 void Server::check_user_name(std::map<int,Client>::iterator& it, std::string buffer){
     if(buffer.size() < 5 || buffer.compare(0,5,"USER "))
-        erase_map_element();
+        erase_map_element(it);
     else
     {
         it->second.setUserName(buffer.substr(5,buffer.size() - 5));
