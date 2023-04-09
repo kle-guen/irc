@@ -34,8 +34,11 @@ class Server
         void check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer);
         void check_nick_name(std::map<int,Client>::iterator& it, std::string buffer);
         void check_user_name(std::map<int,Client>::iterator& it, std::string buffer);
-        void commandSend(std::string buff,std::map<int,Client>::iterator it);
+        
         void choose_cmd(std::string buff,std::map<int,Client>::iterator it);
+        void commandSend(std::string buff,std::map<int,Client>::iterator it);
+        void commandPrivMsg(std::string buff,std::map<int,Client>::iterator it);
+        void commandJoin(std::string buff,std::map<int,Client>::iterator it);
 
     private:
 

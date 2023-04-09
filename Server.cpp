@@ -91,39 +91,57 @@ void    Server::initServer(char **av)
     }
 }
 
-void Server::commandSend(std::string buff,std::map<int,Client>::iterator it){
-    buff = buff.substr(4,buff.size());
-    (void)it;
+void Server::commandSend(std::string buff,std::map<int,Client>::iterator client){
+    buff = buff.substr(5,buff.size());
+    std::string channel = buff.substr(0,buff.find(' '));
     for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
     {
-        if (buff.find(' ') != std::string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
-            std::cout << "commandSend" << std::endl;
+        if (buff.find(' ') != std::string::npos && channel.compare(it->first) == 0)
+        {   
+            it->second.sendMessage(client->second.getNick_name(),client->first,buff);
+        }
             // it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
     }
 }
 
-void Server::commandJoin(std::string buff,std::map<int,Client>::iterator it){
-    buff = buff.substr(4,buff.size());
-    (void)it;
+void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client){
+    buff = buff.substr(5,buff.size());
     for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
     {
-        if (buff.find(' ') != std::string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
-            std::cout << "commandSend" << std::endl;
-            // it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
+        if (buff.substr(0,buff.size() - 1).compare(it->first) == 0)
+        {
+            it->second.addClient(client->first);
+            return;
+        }
     }
+    Channel test;
+    std::string test_str  =buff.substr(0,buff.size() - 1);
+
+    this->_vchannel.insert(std::pair<std::string,Channel>(test_str,test));//push_back(Channel(it->first,buff.substr(0,buff.find(' '))));
+    _vchannel[test_str].addClient(client->first);
+    
 }
 
-typedef struct s_test{
-	std::string test;
-	void	(Server::*f)(std::string buff,std::map<int,Client>::iterator it);
-}t_test;
+void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
+    buff = buff.substr(6,buff.size());
+    (void)client;
+    for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
+    {
+
+    }
+}
 
 void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator it)
 {
-    if (buff.size() > 5 && buff.substr(0,4).compare("SEND "))
+    if (buff.size() > 5 && buff.substr(0,5).compare("SEND ") == 0)
         commandSend(buff,it);
-    else if (buff.size() > 5 && buff.substr(0,4).compare("JOIN "))
+    else if (buff.size() > 5 && buff.substr(0,5).compare("JOIN ") == 0)
+    {
         commandJoin(buff,it);
+        std::cout<<"join"<<std::endl;
+    }
+    else if (buff.size() > 7 && buff.substr(0,6).compare("PRIVMSG ") == 0)
+        commandPrivMsg(buff,it);
 }
 
 void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
@@ -152,6 +170,8 @@ void    Server::message_receiver(std::map<int,Client>::iterator it, std::string 
             check_nick_name(it , tmp); 
         else if(status == 2)
             check_user_name(it , tmp);
+        else
+            choose_cmd(buffer, it);
         it->second.eraseToBackslash_N();
         if(!it->second.getCommand().find_first_of('\n'))
             it->second.resetCommand();
@@ -167,7 +187,11 @@ void Server::check_password(std::map<int,Client>::iterator& it, std::string pass
     if(password.compare(buffer) != 0)
         erase_map_element(it);
     else
+    {
+        std::string outputstr("[1] [PASS CORRECT]\n");
         it->second.setStatus(1);
+        send(it->first,outputstr.c_str(),outputstr.size(),0);
+    }
 }
 
 void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buffer){
@@ -177,6 +201,10 @@ void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buf
     {
         it->second.setNickName(buffer.substr(5,buffer.size() - 5));
         it->second.setStatus(2);
+        std::string outputstr("[2] [NICK NAME SET]");
+        outputstr.append(it->second.getNick_name());
+        outputstr.append("\n");
+        send(it->first, outputstr.c_str() ,outputstr.size(),0);
     }
 }
 
@@ -185,7 +213,11 @@ void Server::check_user_name(std::map<int,Client>::iterator& it, std::string buf
         erase_map_element(it);
     else
     {
+        std::string outputstr("[3] [USER NAME SET]");
         it->second.setUserName(buffer.substr(5,buffer.size() - 5));
         it->second.setStatus(3);
+        outputstr.append(it->second.getUser_name());
+        outputstr.append("\n");
+        send(it->first,outputstr.c_str(),outputstr.size(),0);
     }
 }

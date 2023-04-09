@@ -8,7 +8,7 @@ PREFIX = /usr/local
 MANPREFIX = ${PREFIX}/share/man
 
 # use system flags.
-SIC_CFLAGS = ${CFLAGS}
+SIC_CFLAGS = ${CFLAGS} -g
 SIC_LDFLAGS = ${LDFLAGS}
 SIC_CPPFLAGS = ${LDFLAGS} -DVERSION=\"${VERSION}\" -D_GNU_SOURCE
 
