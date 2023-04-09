@@ -90,7 +90,20 @@ void    Server::initServer(char **av)
         }
     }
 }
-        
+void choose_cmd(string buff,std::map<int,Client>::iterator it)
+{
+    std::map<string,Channel> c;
+    std::map<string,Channel>::iterator it = c.begin();
+    if (buff.size > 5 && buff.subst(0,4).compare("SEND "))
+    {
+        buff = buff.subst(4,buff.size());
+        while (it != c.end)
+        {
+            if (buff.find(' ') != string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
+                it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
+        }
+    }
+}
 void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
 
     //buffer de copy

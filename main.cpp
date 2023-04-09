@@ -11,4 +11,3 @@ int main(int ac, char **av)
     server.initServer(av);
     return (0);
 }
-
