@@ -90,20 +90,42 @@ void    Server::initServer(char **av)
         }
     }
 }
-void choose_cmd(string buff,std::map<int,Client>::iterator it)
-{
-    std::map<string,Channel> c;
-    std::map<string,Channel>::iterator it = c.begin();
-    if (buff.size > 5 && buff.subst(0,4).compare("SEND "))
+
+void Server::commandSend(std::string buff,std::map<int,Client>::iterator it){
+    buff = buff.substr(4,buff.size());
+    (void)it;
+    for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
     {
-        buff = buff.subst(4,buff.size());
-        while (it != c.end)
-        {
-            if (buff.find(' ') != string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
-                it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
-        }
+        if (buff.find(' ') != std::string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
+            std::cout << "commandSend" << std::endl;
+            // it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
     }
 }
+
+void Server::commandJoin(std::string buff,std::map<int,Client>::iterator it){
+    buff = buff.substr(4,buff.size());
+    (void)it;
+    for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
+    {
+        if (buff.find(' ') != std::string::npos && buff.substr(0,buff.find(' ')).compare(it->first) == 0)
+            std::cout << "commandSend" << std::endl;
+            // it->second.sendMessage(it->second.getName(),buff.substr(buff.find(' '),buff.size()));
+    }
+}
+
+typedef struct s_test{
+	std::string test;
+	void	(Server::*f)(std::string buff,std::map<int,Client>::iterator it);
+}t_test;
+
+void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator it)
+{
+    if (buff.size() > 5 && buff.substr(0,4).compare("SEND "))
+        commandSend(buff,it);
+    else if (buff.size() > 5 && buff.substr(0,4).compare("JOIN "))
+        commandJoin(buff,it);
+}
+
 void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
 
     //buffer de copy
