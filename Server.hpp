@@ -33,18 +33,57 @@ class Server
         void check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer);
         void check_nick_name(std::map<int,Client>::iterator& it, std::string buffer);
         void check_user_name(std::map<int,Client>::iterator& it, std::string buffer);
+        int check_channel_exist(std::string chanel,std::map<int,Client>::iterator client);
         
-        void choose_cmd(std::string buff,std::map<int,Client>::iterator it);
+        void choose_cmd(std::string buff,std::map<int,Client>::iterator it, std::string password);
         void commandSend(std::string buff,std::map<int,Client>::iterator it);
         void commandPrivMsg(std::string buff,std::map<int,Client>::iterator it);
         void commandKick(std::string buff,std::map<int,Client>::iterator client);
         void commandJoin(std::string buff,std::map<int,Client>::iterator it);
-        std::map<int,Client> ::iterator  find_socket_by_nick_name(std::string target);
+        void commandMode(std::string buff,std::map<int,Client>::iterator client);
+        void commandTopic(std::string buff,std::map<int,Client>::iterator client);
+        void commandInvite(std::string buff,std::map<int,Client>::iterator client);
 
+        std::map<int,Client> ::iterator  find_socket(std::string target);
         std::map<std::string,Channel> getVchannel()const;
 
     private:
 
+        class WrongParameterMODE : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class WrongParameterKICK : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class WrongParameterJOIN : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class CommandDoesntExist : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class ClientDoesntExist : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class ChannelDoesntExist : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
+        class WrongPassword : public std::exception
+        {
+            public :
+                virtual const char* what() const throw(); 
+        };
         std::map<int,Client> _server;
         std::map<std::string,Channel> _vchannel;
 };

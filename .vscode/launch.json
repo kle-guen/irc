@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/nfs/homes/alprival/t/irc",
-            "args": ["1167","123"],
+            "args": ["1138","123"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
@@ -21,6 +21,7 @@
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
                 },
+                { "text": "set output-radix 10" },
                 {
                     "description": "Set Disassembly Flavor to Intel",
                     "text": "-gdb-set disassembly-flavor intel",

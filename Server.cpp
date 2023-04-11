@@ -21,6 +21,33 @@ Server::~Server()
 
 }
 
+const char* Server::WrongParameterMODE::what() const throw(){
+    return("[Error]Paramètres: #<channel> {[+|-]|o|i|t} [<user>]\n");
+}
+
+const char* Server::WrongParameterJOIN::what() const throw(){
+    return("[Error]Paramètres: #<channel> <password>\n");
+}
+
+const char* Server::WrongParameterKICK::what() const throw(){
+    return("[Error]Paramètres: <pseudonyme> #<canal> \n");
+}
+
+const char* Server::CommandDoesntExist::what() const throw(){
+    return("[Error] Command doesn't exist\n");
+}
+
+const char* Server::ChannelDoesntExist::what() const throw(){
+    return("[Error] Channel doesn't exist\n");
+}
+
+const char* Server::ClientDoesntExist::what() const throw(){
+    return("[Error] Client doesn't exist\n");
+}
+
+const char* Server::WrongPassword::what() const throw(){
+    return("[Error] Wrong Password\n");
+}
 
 void    Server::initServer(char **av)
 {
@@ -101,73 +128,74 @@ void Server::commandSend(std::string buff,std::map<int,Client>::iterator client)
     }
 }
 
-
 void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client){
     int len;
+    std::string name_channel;
+    std::string password;
+    Channel instance_channel;
+
     buff = buff.substr(5,buff.size());
     len = buff.find(' ');
-    if (len == -1){
-        send(client->first,"[Error]JOIN <channel> <password> ",33,0);
-        return;
-    }
+    name_channel = buff.substr(0,len);
+    password = buff.substr(len + 1,buff.size() - len - 1);
+    if (len == -1 || password.size() < 1 || name_channel[0] != '#')
+        throw WrongParameterJOIN();
     for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
     {
-        if (buff.substr(0,len).compare(it->first) == 0 && buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0)
+        if (buff.substr(0,len).compare(it->first) == 0 && buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0 && it->second.getInvite() == false)
         {
             it->second.addClient(client->first);
             return;
         }
     }
-    Channel instance_channel;
-    std::string name_channel = buff.substr(0,len);
-    std::string password = buff.substr(len + 1,buff.size() - len - 1);
-
     this->_vchannel.insert(std::pair<std::string,Channel>(name_channel,instance_channel));//push_back(Channel(it->first,buff.substr(0,buff.find(' '))));
     _vchannel[name_channel].addClient(client->first);
     _vchannel[name_channel].setPassword(password);
 }
 
-std::map<int,Client> ::iterator  Server::find_socket_by_nick_name(std::string target){
+std::map<int,Client> ::iterator  Server::find_socket(std::string target){
     std::map<int,Client> ::iterator it;
     for(it = _server.begin(); it != _server.end();it++)
     {
         if (it->second.getNick_name().compare(target) == 0)
             return(it);
     }
+    throw ClientDoesntExist();
     return(it);
 }
 
 void Server::commandKick(std::string buff,std::map<int,Client>::iterator client){
+    std::string target;
+    std::string channel;
+    std::string message;
+    std::map<std::string,Channel>::iterator it;
+
     buff = buff.substr(5,buff.size());
     int len = buff.find(' ');
-    if (len == -1){
-        send(client->first,"[Error]KICK <client> <channel> <message> ",41,0);
-        return;
-    }
-    std::string target = buff.substr(0,len);
+    if (len == -1)
+        throw WrongParameterKICK();
+    target = buff.substr(0,len);
     buff = buff.substr(buff.find(' ') + 1,buff.size());
     len = buff.find(' ');
-    if (len == -1){
-        send(client->first,"[Error]KICK <client> <channel> <message> ",41,0);
-        return;
-    }
-    std::string channel = buff.substr(0,buff.find(' '));
+    if (len == -1)
+        throw WrongParameterKICK();
+    channel = buff.substr(0,buff.find(' '));
     buff = buff.substr(buff.find(' ') + 1,buff.size());
-    std::string message = buff.substr(0,buff.size());
+    message = buff.substr(0,buff.size());
 
-    std::map<std::string,Channel>::iterator it = _vchannel.find(channel);
+    it = _vchannel.find(channel);
     if(it == _vchannel.end())
-    {
-        send(client->first,"[Error] Cannot found channel",28,0);
-        return ;
-    }
-    it->second.removeClient(find_socket_by_nick_name(target)->first, client->first);
+        throw ChannelDoesntExist();
+    it->second.removeClient(find_socket(target)->first, client->first);
 }
 
 void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
+    std::string target;
+    std::string message;
+    
     buff = buff.substr(8,buff.size());
-    std::string target = buff.substr(0,buff.find(' '));
-    std::string message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
+    target = buff.substr(0,buff.find(' '));
+    message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
     for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
     {
         if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target) == 0)
@@ -180,27 +208,129 @@ void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator clie
     }
 }
 
-void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator it)
+int check_mode_option(std::string option){
+    if((option[0] != '-' && option[0] != '+') || (option[1] != 'i' && option[1] != 't' && option[1] != 'o'))
+        return(1);
+    return(0);
+}
+
+void Server::commandMode(std::string buff,std::map<int,Client>::iterator client){
+    std::map<std::string,Channel>::iterator it;
+    std::map<int,Client> ::iterator id;
+    std::string option;
+    std::string name_channel;
+    std::string Name;
+    
+    buff = buff.substr(5,buff.size());
+    int len = buff.find(' ');
+    if (len == -1)
+        throw WrongParameterMODE();
+
+    name_channel = buff.substr(0,len);
+    it = _vchannel.find(name_channel);
+    if(it == _vchannel.end())
+        throw ChannelDoesntExist();
+
+    buff = buff.substr(buff.find(' ') + 1,buff.size());
+    len = buff.find(' ');
+    if(len == -1)
+        option = buff.substr(0,buff.size());
+    else
+    {
+        option = buff.substr(0,len);
+        buff = buff.substr(buff.find(' ') + 1,buff.size());
+        Name = buff.substr(0,buff.size());
+        id = find_socket(Name);
+    }
+    if(check_mode_option(option))
+        throw WrongParameterMODE();
+
+    if(option[1] == 'o')
+        it->second.changeOperator(client->first,id->first);
+    else if(option[1] == 'i' && option[0] == '+')
+        it->second.setTopic(true);
+    else if(option[1] == 'i' && option[0] == '-')
+        it->second.setTopic(false);
+    else if(option[1] == 't' && option[0] == '+')
+        it->second.setTopic(true);
+    else if(option[1] == 't' && option[0] == '-')
+        it->second.setTopic(false);
+}
+
+
+void Server::commandTopic(std::string buff,std::map<int,Client>::iterator client){
+    (void)client;
+    (void)buff;
+}
+
+void Server::commandInvite(std::string buff,std::map<int,Client>::iterator client){
+    std::map<std::string,Channel>::iterator it;
+    std::map<int,Client> ::iterator id;
+    std::string name_channel;
+    std::string name_target;
+    int len;
+    
+    buff = buff.substr(7,buff.size());
+    len = buff.find(' ');
+    if (len == -1)
+        throw WrongParameterMODE();
+    name_target = buff.substr(0,len);
+    id = find_socket(name_target);
+    buff = buff.substr(buff.find(' ') + 1,buff.size());
+    name_channel = buff.substr(0,buff.size());
+
+    it = _vchannel.find(name_channel);
+    if(it == _vchannel.end())
+        throw ChannelDoesntExist();
+    if (client->first == it->second.getOperator())
+        it->second.addClient(id->first);
+}
+
+
+void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client , std::string password)
 {
-    if (buff.size() > 5 && buff.substr(0,5).compare("SEND ") == 0)
-        commandSend(buff,it);
-    else if (buff.size() > 5 && (buff.substr(0,5).compare("JOIN ") && buff.substr(0,6).compare(":JOIN ")) == 0)
-        commandJoin(buff,it);
-    else if (buff.size() > 5 && buff.substr(0,5).compare("KICK ") == 0)
-        commandKick(buff,it);
-    else if (buff.size() > 8 && buff.substr(0,8).compare("PRIVMSG ") == 0)
-        commandPrivMsg(buff,it);
+    std::string outerror;
+    try
+    {
+        int status = client->second.getStatus();
+        if(status == 0)
+            check_password(client ,password, buff);
+        else if(status == 1)
+            check_nick_name(client , buff); 
+        else if(status == 2)
+            check_user_name(client , buff);
+        else if (buff.size() > 5 && buff.substr(0,5).compare("SEND ") == 0)
+            commandSend(buff,client);
+        else if (buff.size() > 5 && buff.substr(0,5).compare("JOIN ") == 0)
+            commandJoin(buff,client);
+        else if (buff.size() > 5 && buff.substr(0,5).compare("KICK ") == 0)
+            commandKick(buff,client);
+        else if (buff.size() > 8 && buff.substr(0,8).compare("PRIVMSG ") == 0)
+            commandPrivMsg(buff,client);
+        else if (buff.size() > 5 && buff.substr(0,5).compare("MODE ") == 0)
+            commandMode(buff,client);
+        else if (buff.size() > 6 && buff.substr(0,6).compare("TOPIC ") == 0)
+            commandTopic(buff,client);
+        else if (buff.size() > 7 && buff.substr(0,7).compare("INVITE ") == 0)
+            commandInvite(buff,client);
+        else
+            throw CommandDoesntExist();
+    }
+    catch(const std::exception& e)
+    {
+        outerror.append(e.what());
+        send(client->first,outerror.c_str(),outerror.size(),0);
+    }
+    
 }
 
 void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
-
-    //buffer de copy
     std::string buffer;
-    buffer.reserve(2048);
+    std::string tmp;
     char buffer_tmp[2048];
     int len;
-    
-    (void)password;
+
+    buffer.reserve(2048);
     len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
     buffer.append(buffer_tmp);
     buffer.erase(len,buffer.size() - len);
@@ -208,47 +338,41 @@ void    Server::message_receiver(std::map<int,Client>::iterator it, std::string 
     while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
     {
         //do your command
-        int status = it->second.getStatus();
         it->second.eraseBackslash_R();
-        std::string tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
-        if(status == 0)
-            check_password(it ,password, tmp);
-        else if(status == 1)
-            check_nick_name(it , tmp); 
-        else if(status == 2)
-            check_user_name(it , tmp);
-        else
-            choose_cmd(tmp, it);
+        tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
+        tmp[tmp.size()] = 0;
+
+        choose_cmd(tmp, it, password);
+
         it->second.eraseToBackslash_N();
         if(!it->second.getCommand().find_first_of('\n'))
             it->second.resetCommand();
     }
 }
 
-void Server::erase_map_element(std::map<int,Client>::iterator& it){
-    //std::cout << "["<< RED << "WRONG INPUT" << RESET << "]" << std::endl;
-    send(it->first,"[WRONG INPUT]\n",14,0);
-}
-
 void Server::check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer){
+    std::string outputstr("[1] [PASS CORRECT]\n");
+    
+    if(buffer.size() < 5 || buffer.compare(0,5,"PASS "))
+        throw CommandDoesntExist();
     if(password.compare(buffer) != 0)
-        erase_map_element(it);
+        throw WrongPassword();
     else
     {
-        std::string outputstr("[1] [PASS CORRECT]\n");
         it->second.setStatus(1);
         send(it->first,outputstr.c_str(),outputstr.size(),0);
     }
 }
 
 void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buffer){
+    std::string outputstr("[2] [NICK NAME SET] : ");
+
     if(buffer.size() < 5 || buffer.compare(0,5,"NICK "))
-        erase_map_element(it);
+        throw CommandDoesntExist();
     else
     {
         it->second.setNickName(buffer.substr(5,buffer.size() - 5));
         it->second.setStatus(2);
-        std::string outputstr("[2] [NICK NAME SET]");
         outputstr.append(it->second.getNick_name());
         outputstr.append("\n");
         send(it->first, outputstr.c_str() ,outputstr.size(),0);
@@ -256,11 +380,12 @@ void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buf
 }
 
 void Server::check_user_name(std::map<int,Client>::iterator& it, std::string buffer){
+    std::string outputstr("[3] [USER NAME SET] : ");
+    
     if(buffer.size() < 5 || buffer.compare(0,5,"USER "))
-        erase_map_element(it);
+        throw CommandDoesntExist();
     else
     {
-        std::string outputstr("[3] [USER NAME SET]");
         it->second.setUserName(buffer.substr(5,buffer.size() - 5));
         it->second.setStatus(3);
         outputstr.append(it->second.getUser_name());
