@@ -19,7 +19,6 @@ Channel &Channel::operator=(Channel const & rhs)
 
 Channel::Channel(int id, std::string name)
 {
-    _mode.t = false;
     _mode.i = false;
     std::cout<<"Chanel Constructor"<<std::endl;
     this->_client_base.push_back(id);
@@ -57,7 +56,7 @@ void Channel::sendMessage(std::string name, int id, std::string message)
         send(*it,message.c_str(),message.size(),0);
         it++;
     }
-}
+}s
 
 void Channel::removeClient(int id,int id_remover)
 {
@@ -81,10 +80,6 @@ std::string Channel::getName() const{
 
 void Channel::setInvite(int type){
     _mode.i = type;
-}
-
-void Channel::setTopic(int type){
-    _mode.t = type;
 }
 
 bool Channel::getInvite(){
