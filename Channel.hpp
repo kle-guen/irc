@@ -10,7 +10,6 @@
 typedef struct s_mode
 {
     bool i;
-    bool t;
 }   t_mode;
 
 class Channel
@@ -29,7 +28,6 @@ class Channel
         int getOperator();
         void changeOperator(int old_operator,int new_operator);
         void setInvite(int type);
-        void setTopic(int type);
         bool getInvite();
         std::string getPassword() const;
 

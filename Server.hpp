@@ -43,6 +43,7 @@ class Server
         void commandMode(std::string buff,std::map<int,Client>::iterator client);
         void commandTopic(std::string buff,std::map<int,Client>::iterator client);
         void commandInvite(std::string buff,std::map<int,Client>::iterator client);
+        void commandPart(std::string buff,std::map<int,Client>::iterator client);
 
         std::map<int,Client> ::iterator  find_socket(std::string target);
         std::map<std::string,Channel> getVchannel()const;

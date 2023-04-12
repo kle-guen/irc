@@ -118,16 +118,6 @@ void    Server::initServer(char **av)
     }
 }
 
-void Server::commandSend(std::string buff,std::map<int,Client>::iterator client){
-    buff = buff.substr(5,buff.size());
-    std::string channel = buff.substr(0,buff.find(' '));
-    for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
-    {
-        if (buff.find(' ') != std::string::npos && channel.compare(it->first) == 0)
-            it->second.sendMessage(client->second.getNick_name(),client->first,buff);
-    }
-}
-
 void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client){
     int len;
     std::string name_channel;
@@ -248,19 +238,14 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     if(option[1] == 'o')
         it->second.changeOperator(client->first,id->first);
     else if(option[1] == 'i' && option[0] == '+')
-        it->second.setTopic(true);
+        it->second.setInvite(true);
     else if(option[1] == 'i' && option[0] == '-')
-        it->second.setTopic(false);
-    else if(option[1] == 't' && option[0] == '+')
-        it->second.setTopic(true);
-    else if(option[1] == 't' && option[0] == '-')
-        it->second.setTopic(false);
+        it->second.setInvite(false);
 }
 
-
-void Server::commandTopic(std::string buff,std::map<int,Client>::iterator client){
-    (void)client;
+void Server::commandPart(std::string buff,std::map<int,Client>::iterator client){
     (void)buff;
+    (void)client;
 }
 
 void Server::commandInvite(std::string buff,std::map<int,Client>::iterator client){
@@ -286,7 +271,6 @@ void Server::commandInvite(std::string buff,std::map<int,Client>::iterator clien
         it->second.addClient(id->first);
 }
 
-
 void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client , std::string password)
 {
     std::string outerror;
@@ -299,18 +283,16 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client ,
             check_nick_name(client , buff); 
         else if(status == 2)
             check_user_name(client , buff);
-        else if (buff.size() > 5 && buff.substr(0,5).compare("SEND ") == 0)
-            commandSend(buff,client);
         else if (buff.size() > 5 && buff.substr(0,5).compare("JOIN ") == 0)
             commandJoin(buff,client);
         else if (buff.size() > 5 && buff.substr(0,5).compare("KICK ") == 0)
             commandKick(buff,client);
+        else if (buff.size() > 8 && buff.substr(0,8).compare("PART ") == 0)
+            commandPart(buff,client);
         else if (buff.size() > 8 && buff.substr(0,8).compare("PRIVMSG ") == 0)
             commandPrivMsg(buff,client);
         else if (buff.size() > 5 && buff.substr(0,5).compare("MODE ") == 0)
             commandMode(buff,client);
-        else if (buff.size() > 6 && buff.substr(0,6).compare("TOPIC ") == 0)
-            commandTopic(buff,client);
         else if (buff.size() > 7 && buff.substr(0,7).compare("INVITE ") == 0)
             commandInvite(buff,client);
         else
