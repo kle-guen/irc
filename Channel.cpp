@@ -85,6 +85,15 @@ void Channel::removeOperator(int new_operator)
     }
 }
 
+int  Channel::find_client(int id){
+    std::deque<int>::iterator it;
+
+    for(it = _client_base.begin();it != _client_base.end();it++)
+        if(*it == id)
+            return(1);
+    return(0);
+}
+
 int Channel::getNbOperator()
 {
     return(this->_mode.o);
@@ -108,7 +117,7 @@ void Channel::addOperator(int new_operator)
 
 void Channel::invertOperator(int new_operator)
 {
-    if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) == this->_client_base.end())
+    if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) != this->_client_base.end())
     {
         if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,new_operator) == this->_client_base.begin()+this->_mode.o)
         {

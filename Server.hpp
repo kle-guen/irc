@@ -33,7 +33,8 @@ public:
     void check_nick_name(std::map<int, Client>::iterator &it, std::string buffer);
     void check_user_name(std::map<int, Client>::iterator &it, std::string buffer);
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
-    void    parseClient(std::string buff, std::vector<std::string> &target);
+    void parseComma(std::string buff, std::vector<std::string> &target,size_t next_space);
+    void executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it, std::string password);
     void commandSend(std::string buff, std::map<int, Client>::iterator it);

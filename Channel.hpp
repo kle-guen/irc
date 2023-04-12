@@ -29,6 +29,7 @@ class Channel
         int getOperator();
         int getNbOperator();
         int isOperator(int id);
+        int  find_client(int id);
 
         void changeOperator(int old_operator,int new_operator);
 

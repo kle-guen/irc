@@ -65,6 +65,77 @@ const char* Server::ERR_NOTONCHANNEL::what() const throw(){
     return("[Error] :You're not on that channel\n");
 }
 
+void    Server::parseComma(std::string buff, std::vector<std::string> &target, size_t next_space){
+    int i = 0;
+
+    while(buff.find(',') != std::string::npos && (buff.find(',') < next_space || next_space == 0))
+    {
+        target.push_back(buff.substr(0,buff.find(',')));
+        buff = buff.substr(buff.find(',') + 1,buff.find(' ') - buff.find(',') - 1);
+        // if (find_socket(target[i]) == _server.end())
+        //     throw ERR_USERSDONTMATCH();
+        if(buff.find(',') == std::string::npos)
+        {
+            if(buff.find(' ') != std::string::npos)
+                target.push_back(buff.substr(0,buff.find(' ')));
+            // else
+            //     throw ERR_USERSDONTMATCH();
+            i++;
+        }
+        i++;
+    }
+    if(buff.find(' ') == std::string::npos)
+        target.push_back(buff.substr(0,buff.size()));
+    else
+        target.push_back(buff.substr(0,buff.find(' ')));
+}
+
+int check_mode_option(std::string option){
+    if(option[0] == 'o' && option.size() == 1)
+        return (0);
+    if((option[0] != '-' && option[0] != '+') || (option[1] != 'i' && option[1] != 't' && option[1] != 'o'))
+        return(1);
+    return(0);
+}
+
+std::map<int,Client> ::iterator  Server::find_socket(std::string target){
+    std::map<int,Client> ::iterator it;
+    for(it = _server.begin(); it != _server.end();it++)
+    {
+        if (it->second.getNick_name().compare(target) == 0)
+            return(it);
+    }
+    throw ERR_USERSDONTMATCH();
+    return(it);
+}
+
+
+void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
+    std::string buffer;
+    std::string tmp;
+    char buffer_tmp[2048];
+    int len;
+
+    buffer.reserve(2048);
+    len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
+    buffer.append(buffer_tmp);
+    buffer.erase(len,buffer.size() - len);
+    it->second.appendCommand(buffer);
+    while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
+    {
+        //do your command
+        it->second.eraseBackslash_R();
+        tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
+        tmp[tmp.size()] = 0;
+
+        choose_cmd(tmp, it, password);
+
+        it->second.eraseToBackslash_N();
+        if(!it->second.getCommand().find_first_of('\n'))
+            it->second.resetCommand();
+    }
+}
+
 void    Server::initServer(char **av)
 {
     //AF_INET = IPv4
@@ -136,42 +207,51 @@ void    Server::initServer(char **av)
 
 void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client){
     int len;
-    std::string name_channel;
-    std::string password;
+    std::vector<int> channel_exist;
+    std::vector<std::string> name_channel;
+    std::vector<std::string> password;
     Channel instance_channel;
 
+    channel_exist.reserve(100);
     buff = buff.substr(5,buff.size());
     len = buff.find(' ');
-    name_channel = buff.substr(0,len);
-    password = buff.substr(len + 1,buff.size() - len - 1);
-    if (len == -1 || password.size() < 1 || name_channel[0] != '#')
+    if(len == -1)
         throw WrongParameterJOIN();
-    for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
+    parseComma(buff,name_channel,buff.find(' '));
+    // name_channel = buff.substr(0,len);
+    
+    buff = buff.substr(buff.find(' ') + 1,buff.size());
+    
+    parseComma(buff,password,buff.find(' '));
+    if(password.size() != name_channel.size())
+        throw WrongParameterJOIN();
+    for(size_t i = 0; i < password.size();i++)
     {
-        if (buff.substr(0,len).compare(it->first) == 0 && it->second.getInvite() == false)
+        for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
         {
-            if(buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0)
-                it->second.addClient(client->first);
-            else
-                throw ERR_BADCHANNELKEY();
-            return;
+            if (name_channel[i].compare(it->first) == 0 && it->second.getInvite() == false)
+            {
+                if(password[i].compare(it->second.getPassword()) == 0)
+                    it->second.addClient(client->first);
+                else
+                    throw ERR_BADCHANNELKEY();
+                channel_exist[i] = 1;
+                break;
+            }
+            channel_exist[i] = 0;
         }
     }
-    this->_vchannel.insert(std::pair<std::string,Channel>(name_channel,instance_channel));//push_back(Channel(it->first,buff.substr(0,buff.find(' '))));
-    _vchannel[name_channel].addClient(client->first);
-    _vchannel[name_channel].setPassword(password);
+    for(size_t i = 0; i < password.size();i++)
+    {
+        if(channel_exist[i] != 1)
+        {
+            this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));//push_back(Channel(it->first,buff.substr(0,buff.find(' '))));
+            _vchannel[name_channel[i]].addClient(client->first);
+            _vchannel[name_channel[i]].setPassword(password[i]);
+        }
+    }
 }
 
-std::map<int,Client> ::iterator  Server::find_socket(std::string target){
-    std::map<int,Client> ::iterator it;
-    for(it = _server.begin(); it != _server.end();it++)
-    {
-        if (it->second.getNick_name().compare(target) == 0)
-            return(it);
-    }
-    throw ERR_USERSDONTMATCH();
-    return(it);
-}
 
 void Server::commandKick(std::string buff,std::map<int,Client>::iterator client){
     std::string target;
@@ -196,27 +276,8 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
 
     buff = buff.substr(buff.find(' ') + 1,buff.size());
     message = buff.substr(0,buff.size());
-    it->second.removeClient(find_socket(target)->first, client->first,1);
-}
-
-void    Server::parseClient(std::string buff, std::vector<std::string> &target){
-    int i = 0;
-    while(buff.find(',') != std::string::npos)
-    {
-        target.push_back(buff.substr(0,buff.find(',')));
-        buff = buff.substr(buff.find(',') + 1,buff.size());
-        if (find_socket(target[i]) == _server.end())
-            throw ERR_USERSDONTMATCH();
-        if(buff.find(',') == std::string::npos)
-        {
-            if(buff.find(' ') != std::string::npos)
-                target.push_back(buff.substr(0,buff.find(' ')));
-            else
-                throw ERR_USERSDONTMATCH();
-            i++;
-        }
-        i++;
-    }
+    if(it->second.isOperator(client->first) == 1)
+        it->second.removeClient(find_socket(target)->first);
 }
 
 void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
@@ -227,7 +288,7 @@ void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator clie
     int len = buff.find(' ');
     if (len == -1)
         throw WrongParameterPRIVMSG();
-    parseClient(buff,target);
+    parseComma(buff,target,buff.find(' '));
     message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
     message.append("\n");
     for(int i = target.size() -1;i != -1; i--)
@@ -245,10 +306,32 @@ void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator clie
     }
 }
 
-int check_mode_option(std::string option){
-    if((option[0] != '-' && option[0] != '+' && option[0] != 'o') || (option[1] != 'i' && option[1] != 't' && option[1] != 'o'))
-        return(1);
-    return(0);
+void Server::executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client){
+    if(option[0] == 'o')
+    {
+        send(client->first,"InvertOperator\n",16,0);
+        it->second.invertOperator(client->first);
+    }
+    else if(option[1] == 'o' && option[0] == '+')
+    {
+        send(client->first,"addOperator\n",13,0);
+        it->second.addOperator(client->first);
+    }
+    else if(option[1] == 'o' && option[0] == '-')
+    {
+        send(client->first,"removeOperator\n",16,0);
+        it->second.removeOperator(client->first);
+    }
+    else if(option[1] == 'i' && option[0] == '+')
+    {
+        send(client->first,"setInvite true\n",16,0);
+        it->second.setInvite(true);
+    }
+    else if(option[1] == 'i' && option[0] == '-')
+    {
+        send(client->first,"setInvite false\n",17,0);
+        it->second.setInvite(false);
+    }
 }
 
 void Server::commandMode(std::string buff,std::map<int,Client>::iterator client){
@@ -281,46 +364,29 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     }
     if(check_mode_option(option))
         throw WrongParameterMODE();
-
-    if(option[0] == 'o')
-        it->second.invertOperator(client->first,id->first);
-    else if(option[1] == 'o' && option[1] == '+')
-        it->second.addOperator(client->first,id->first);
-    else if(option[1] == 'o' && option[1] == '-')
-        it->second.removeOperator(client->first,id->first);
-    else if(option[1] == 'i' && option[0] == '+')
-        it->second.setInvite(true);
-    else if(option[1] == 'i' && option[0] == '-')
-        it->second.setInvite(false);
+    executemode(option, it, client);
 }
 
 void Server::commandPart(std::string buff,std::map<int,Client>::iterator client){
 
     std::map<std::string,Channel>::iterator it;
-    std::string name_channel;
+    // std::string name_channel;
+    std::vector<std::string> name_channel;
 
     buff = buff.substr(5,buff.size());
     if (buff.size() < 1)
         throw WrongParameterMODE();
 
-    while(buff.find(',') != std::string::npos)
+    parseComma(buff,name_channel,buff.find(' '));
+    for(size_t i = 0; i < name_channel.size();i++)
     {
-        name_channel = buff.substr(0,buff.find(','));
-        buff = buff.substr(buff.find(',') + 1,buff.size());
-        it = _vchannel.find(name_channel);
+        it = _vchannel.find(name_channel[i]);
         if(it == _vchannel.end())
             throw ERR_NOSUCHCHANNEL();
         if(!it->second.find_client(client->first))
             throw ERR_NOTONCHANNEL();
-        it->second.removeClient(client->first,client->first,0);
+        it->second.removeClient(client->first);
     }
-    name_channel = buff.substr(0,buff.size());
-    it = _vchannel.find(name_channel);
-    if(it == _vchannel.end())
-            throw ERR_NOSUCHCHANNEL();
-    if(!it->second.find_client(client->first))
-            throw ERR_NOTONCHANNEL();
-    it->second.removeClient(client->first,client->first,0);
 }
 
 void Server::commandInvite(std::string buff,std::map<int,Client>::iterator client){
@@ -348,20 +414,24 @@ void Server::commandInvite(std::string buff,std::map<int,Client>::iterator clien
 }
 
 void Server::commandNotice(std::string buff,std::map<int,Client>::iterator client){
-    std::string target;
+    std::vector<std::string> target;
     std::string message;
     
-    buff = buff.substr(8,buff.size());
-    target = buff.substr(0,buff.find(' '));
+    buff = buff.substr(7,buff.size());
+    parseComma(buff,target,buff.find(' '));
     message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
-    for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
+    message.append("\n");
+    for(size_t i = 0; i < target.size();i++)
     {
-        if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target) == 0)
+        for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
         {
+            if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target[i]) == 0)
+            {
 
-            send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
-            send(it->first," :",2,0);
-            send(it->first,message.c_str(),message.size(),0);
+                send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
+                send(it->first," :",2,0);
+                send(it->first,message.c_str(),message.size(),0);
+            }
         }
     }
 }
@@ -372,7 +442,7 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client)
 
     for (it_c = _vchannel.begin(); it_c != _vchannel.end(); it_c++)
             if (it_c->second.find_client(client->first))
-                it_c->second.removeClient(client->first, client->first, 0);
+                it_c->second.removeClient(client->first);
     if (buff.empty())
     {    
         out.append(client->second.getNick_name() + " quits\n");           //message par default ?
@@ -425,32 +495,6 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client ,
         send(client->first,outerror.c_str(),outerror.size(),0);
     }
     
-}
-
-void    Server::message_receiver(std::map<int,Client>::iterator it, std::string password){
-    std::string buffer;
-    std::string tmp;
-    char buffer_tmp[2048];
-    int len;
-
-    buffer.reserve(2048);
-    len = recv(it->first,buffer_tmp,sizeof(buffer_tmp),0);
-    buffer.append(buffer_tmp);
-    buffer.erase(len,buffer.size() - len);
-    it->second.appendCommand(buffer);
-    while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
-    {
-        //do your command
-        it->second.eraseBackslash_R();
-        tmp = it->second.getCommand().substr(0,it->second.getCommand().find_first_of('\n'));
-        tmp[tmp.size()] = 0;
-
-        choose_cmd(tmp, it, password);
-
-        it->second.eraseToBackslash_N();
-        if(!it->second.getCommand().find_first_of('\n'))
-            it->second.resetCommand();
-    }
 }
 
 void Server::check_password(std::map<int,Client>::iterator& it, std::string password, std::string buffer){
