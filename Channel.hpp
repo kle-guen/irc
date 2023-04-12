@@ -10,6 +10,7 @@
 typedef struct s_mode
 {
     bool i;
+    int o;
 }   t_mode;
 
 class Channel
@@ -23,17 +24,18 @@ class Channel
         void sendMessage(std::string name, int id, std::string message);
         void setName(std::string name);
         std::string getName() const;
-        void removeClient(int id,int id_remover, bool type);
+        void removeClient(int id);
         void setPassword(std::string password);
-        int  getOperator();
-        int  find_client(int id);
+        int getOperator();
+        int getNbOperator();
+        int isOperator(int id);
 
         void changeOperator(int old_operator,int new_operator);
 
-        void removeOperator(int old_operator,int new_operator);
-        void addOperator(int old_operator,int new_operator);
-        void invertOperator(int old_operator,int new_operator);
-
+        void removeOperator(int new_operator);
+        void addOperator(int new_operator);
+        void invertOperator(int new_operator);
+        
         void setInvite(int type);
         bool getInvite();
         std::string getPassword() const;

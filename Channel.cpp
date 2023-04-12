@@ -20,6 +20,7 @@ Channel &Channel::operator=(Channel const & rhs)
 Channel::Channel(int id, std::string name)
 {
     _mode.i = false;
+    _mode.o =1;
     std::cout<<"Chanel Constructor"<<std::endl;
     this->_client_base.push_back(id);
     this->_name = name;
@@ -35,16 +36,8 @@ int Channel::getOperator()
     return(*this->_client_base.begin());
 }
 
-int  Channel::find_client(int id){
-    std::deque<int>::iterator it;
 
-    for(it = _client_base.begin();it != _client_base.end();it++)
-        if(*it == id)
-            return(1);
-    return(0);
-}
-
-
+/*
 void Channel::removeOperator(int old_operator,int new_operator){
     (void)old_operator;
     (void)new_operator;
@@ -59,7 +52,7 @@ void Channel::invertOperator(int old_operator,int new_operator){
     (void)old_operator;
     (void)new_operator;
 }
-
+*/
 void Channel::changeOperator(int old_operator,int new_operator)
 {
     if (old_operator == this->getOperator() && std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) != this->_client_base.end())
@@ -67,6 +60,70 @@ void Channel::changeOperator(int old_operator,int new_operator)
         std::deque<int>::iterator it = std::find(this->_client_base.begin(),this->_client_base.end(),new_operator);
         this->_client_base.push_front(*it);
         this->_client_base.erase(it);
+    }
+}
+
+int Channel::isOperator(int id)
+{
+    if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,id) == this->_client_base.begin()+this->_mode.o)
+        return(0);
+    return(1);
+}
+
+void Channel::removeOperator(int new_operator)
+{
+    if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) == this->_client_base.end())
+    {
+        return;
+    }
+    else if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,new_operator) != this->_client_base.begin()+this->_mode.o)
+    {
+        std::deque<int>::iterator it = std::find(this->_client_base.begin(),this->_client_base.end(),new_operator);
+        this->_client_base.push_back(*it);
+        this->_client_base.erase(it);
+        this->_mode.o--;
+    }
+}
+
+int Channel::getNbOperator()
+{
+    return(this->_mode.o);
+}
+
+void Channel::addOperator(int new_operator)
+{
+    if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) == this->_client_base.end())
+    {
+        this->_client_base.push_front(new_operator);
+        this->_mode.o++;
+    }
+    else if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,new_operator) == this->_client_base.begin()+this->_mode.o)
+    {
+        std::deque<int>::iterator it = std::find(this->_client_base.begin(),this->_client_base.end(),new_operator);
+        this->_client_base.push_front(*it);
+        this->_client_base.erase(it);
+        this->_mode.o++;
+    }
+}
+
+void Channel::invertOperator(int new_operator)
+{
+    if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) == this->_client_base.end())
+    {
+        if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,new_operator) == this->_client_base.begin()+this->_mode.o)
+        {
+            std::deque<int>::iterator it = std::find(this->_client_base.begin(),this->_client_base.end(),new_operator);
+            this->_client_base.push_front(*it);
+            this->_client_base.erase(it);
+            this->_mode.o++;
+        }
+        else
+        {
+            std::deque<int>::iterator it = std::find(this->_client_base.begin(),this->_client_base.end(),new_operator);
+            this->_client_base.push_back(*it);
+            this->_client_base.erase(it);
+            this->_mode.o--;
+        }
     }
 }
 
@@ -84,11 +141,9 @@ void Channel::sendMessage(std::string name, int id, std::string message)
     }
 }
 
-void Channel::removeClient(int id,int id_remover, bool type)
+void Channel::removeClient(int id)
 {
     std::deque<int>::iterator it = this->_client_base.begin();
-    if (id_remover != *it && type)
-        return ;
     while(it!= this->_client_base.end())
     {
         if (id == *it)
