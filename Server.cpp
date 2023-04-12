@@ -22,43 +22,47 @@ Server::~Server()
 }
 
 const char* Server::WrongParameterMODE::what() const throw(){
-    return("[Error]Paramètres: #<channel> {[+|-]|o|i|t} [<user>]\n");
+    return("[Error] :Paramètres: #<channel> {[+|-]|o|i|t} [<user>]\n");
 }
 
 const char* Server::WrongParameterPRIVMSG::what() const throw(){
-    return("[Error]Paramètres: <receiver> <text to be sent>\n");
+    return("[Error] :Paramètres: <receiver> <text to be sent>\n");
 }
 
 const char* Server::WrongParameterJOIN::what() const throw(){
-    return("[Error]Paramètres: #<channel> <password>\n");
+    return("[Error] :Paramètres: #<channel> <password>\n");
+}
+
+const char* Server::ERR_NOTEXTTOSEND::what() const throw(){
+    return("[Error] :No text to send\n");
 }
 
 const char* Server::WrongParameterKICK::what() const throw(){
-    return("[Error]Paramètres: <pseudonyme> #<canal> \n");
+    return("[Error] :Paramètres: <pseudonyme> #<canal> \n");
 }
 
 const char* Server::CommandDoesntExist::what() const throw(){
-    return("[Error] Command doesn't exist\n");
+    return("[Error] :Command doesn't exist\n");
 }
 
 const char* Server::ERR_NOSUCHCHANNEL::what() const throw(){
-    return("[Error] No such channel\n");
+    return("[Error] :No such channel\n");
 }
 
 const char* Server::ERR_BADCHANNELKEY::what() const throw(){
-    return("[Error] Cannot join channel wrong key\n");
+    return("[Error] :Cannot join channel wrong key\n");
 }
 
 const char* Server::ERR_USERSDONTMATCH::what() const throw(){
-    return("[Error] Client doesn't exist\n");
+    return("[Error] :Client doesn't exist\n");
 }
 
 const char* Server::ERR_PASSWDMISMATCH::what() const throw(){
-    return("[Error] Password incorrect\n");
+    return("[Error] :Password incorrect\n");
 }
 
 const char* Server::ERR_NOTONCHANNEL::what() const throw(){
-    return("[Error] You're not on that channel\n");
+    return("[Error] :You're not on that channel\n");
 }
 
 void    Server::initServer(char **av)
@@ -195,28 +199,48 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
     it->second.removeClient(find_socket(target)->first, client->first,1);
 }
 
+void    Server::parseClient(std::string buff, std::vector<std::string> &target){
+    int i = 0;
+    while(buff.find(',') != std::string::npos)
+    {
+        target.push_back(buff.substr(0,buff.find(',')));
+        buff = buff.substr(buff.find(',') + 1,buff.size());
+        if (find_socket(target[i]) == _server.end())
+            throw ERR_USERSDONTMATCH();
+        if(buff.find(',') == std::string::npos)
+        {
+            if(buff.find(' ') != std::string::npos)
+                target.push_back(buff.substr(0,buff.find(' ')));
+            else
+                throw ERR_USERSDONTMATCH();
+            i++;
+        }
+        i++;
+    }
+}
+
 void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
-    std::string target;
+    std::vector<std::string> target;
     std::string message;
-    
+
     buff = buff.substr(8,buff.size());
     int len = buff.find(' ');
     if (len == -1)
         throw WrongParameterPRIVMSG();
-
-    target = buff.substr(0,buff.find(' '));
-    if (find_socket(target) != _server.end())
-        throw ERR_USERSDONTMATCH();
-
+    parseClient(buff,target);
     message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
-    for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
+    message.append("\n");
+    for(int i = target.size() -1;i != -1; i--)
     {
-        if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target) == 0)
+        for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
         {
+            if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target[i]) == 0)
+            {
 
-            send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
-            send(it->first," :",2,0);
-            send(it->first,message.c_str(),message.size(),0);
+                send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
+                send(it->first," :",2,0);
+                send(it->first,message.c_str(),message.size(),0);
+            }
         }
     }
 }
@@ -341,6 +365,7 @@ void Server::commandNotice(std::string buff,std::map<int,Client>::iterator clien
         }
     }
 }
+
 void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client){
     std::map<std::string,Channel>::iterator it_c;
     std::string out;

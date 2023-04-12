@@ -33,6 +33,7 @@ public:
     void check_nick_name(std::map<int, Client>::iterator &it, std::string buffer);
     void check_user_name(std::map<int, Client>::iterator &it, std::string buffer);
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
+    void    parseClient(std::string buff, std::vector<std::string> &target);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it, std::string password);
     void commandSend(std::string buff, std::map<int, Client>::iterator it);
@@ -52,6 +53,9 @@ public:
     std::map<std::string, Channel> getVchannel() const;
 
 private:
+
+    std::map<int, Client> _server;
+    std::map<std::string, Channel> _vchannel;
     class WrongParameterMODE : public std::exception
     {
     public:
@@ -102,8 +106,11 @@ private:
     public:
         virtual const char *what() const throw();
     };
-    std::map<int, Client> _server;
-    std::map<std::string, Channel> _vchannel;
+    class ERR_NOTEXTTOSEND : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
 };
 
 #endif
