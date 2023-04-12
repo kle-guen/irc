@@ -29,9 +29,27 @@ Channel::~Channel()
 {
 
 }
+
 int Channel::getOperator()
 {
     return(*this->_client_base.begin());
+}
+
+
+
+void Channel::removeOperator(int old_operator,int new_operator){
+    (void)old_operator;
+    (void)new_operator;
+}
+
+void Channel::addOperator(int old_operator,int new_operator){
+    (void)old_operator;
+    (void)new_operator;
+}
+
+void Channel::invertOperator(int old_operator,int new_operator){
+    (void)old_operator;
+    (void)new_operator;
 }
 
 void Channel::changeOperator(int old_operator,int new_operator)
@@ -56,7 +74,7 @@ void Channel::sendMessage(std::string name, int id, std::string message)
         send(*it,message.c_str(),message.size(),0);
         it++;
     }
-}s
+}
 
 void Channel::removeClient(int id,int id_remover)
 {

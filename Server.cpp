@@ -37,16 +37,24 @@ const char* Server::CommandDoesntExist::what() const throw(){
     return("[Error] Command doesn't exist\n");
 }
 
-const char* Server::ChannelDoesntExist::what() const throw(){
-    return("[Error] Channel doesn't exist\n");
+const char* Server::ERR_NOSUCHCHANNEL::what() const throw(){
+    return("[Error] No such channel\n");
 }
 
-const char* Server::ClientDoesntExist::what() const throw(){
+const char* Server::ERR_BADCHANNELKEY::what() const throw(){
+    return("[Error] Cannot join channel wrong key\n");
+}
+
+const char* Server::ERR_USERSDONTMATCH::what() const throw(){
     return("[Error] Client doesn't exist\n");
 }
 
-const char* Server::WrongPassword::what() const throw(){
-    return("[Error] Wrong Password\n");
+const char* Server::ERR_PASSWDMISMATCH::what() const throw(){
+    return("[Error] Password incorrect\n");
+}
+
+const char* Server::ERR_NOTONCHANNEL::what() const throw(){
+    return("[Error] You're not on that channel\n");
 }
 
 void    Server::initServer(char **av)
@@ -132,8 +140,10 @@ void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client)
         throw WrongParameterJOIN();
     for(std::map<std::string,Channel>::iterator it = _vchannel.begin(); it != _vchannel.end();it++)
     {
-        if (buff.substr(0,len).compare(it->first) == 0 && buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0 && it->second.getInvite() == false)
+        if (buff.substr(0,len).compare(it->first) == 0 && it->second.getInvite() == false)
         {
+            if(buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0)
+
             it->second.addClient(client->first);
             return;
         }
@@ -150,7 +160,7 @@ std::map<int,Client> ::iterator  Server::find_socket(std::string target){
         if (it->second.getNick_name().compare(target) == 0)
             return(it);
     }
-    throw ClientDoesntExist();
+    throw ERR_USERSDONTMATCH();
     return(it);
 }
 
@@ -175,7 +185,7 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
 
     it = _vchannel.find(channel);
     if(it == _vchannel.end())
-        throw ChannelDoesntExist();
+        throw ERR_NOSUCHCHANNEL();
     it->second.removeClient(find_socket(target)->first, client->first);
 }
 
@@ -199,7 +209,7 @@ void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator clie
 }
 
 int check_mode_option(std::string option){
-    if((option[0] != '-' && option[0] != '+') || (option[1] != 'i' && option[1] != 't' && option[1] != 'o'))
+    if((option[0] != '-' && option[0] != '+' && option[0] != 'o') || (option[1] != 'i' && option[1] != 't' && option[1] != 'o'))
         return(1);
     return(0);
 }
@@ -219,7 +229,7 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     name_channel = buff.substr(0,len);
     it = _vchannel.find(name_channel);
     if(it == _vchannel.end())
-        throw ChannelDoesntExist();
+        throw ERR_NOSUCHCHANNEL();
 
     buff = buff.substr(buff.find(' ') + 1,buff.size());
     len = buff.find(' ');
@@ -235,17 +245,46 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     if(check_mode_option(option))
         throw WrongParameterMODE();
 
-    if(option[1] == 'o')
-        it->second.changeOperator(client->first,id->first);
+    if(option[0] == 'o')
+        it->second.invertOperator(client->first,id->first);
+    else if(option[1] == 'o' && option[1] == '+')
+        it->second.addOperator(client->first,id->first);
+    else if(option[1] == 'o' && option[1] == '-')
+        it->second.removeOperator(client->first,id->first);
     else if(option[1] == 'i' && option[0] == '+')
         it->second.setInvite(true);
     else if(option[1] == 'i' && option[0] == '-')
         it->second.setInvite(false);
 }
 
+
 void Server::commandPart(std::string buff,std::map<int,Client>::iterator client){
-    (void)buff;
-    (void)client;
+
+    std::map<std::string,Channel>::iterator it;
+    std::string name_channel;
+
+    buff = buff.substr(5,buff.size());
+    if (buff.size() < 1)
+        throw WrongParameterMODE();
+
+    while(buff.find(',') != std::string::npos)
+    {
+        name_channel = buff.substr(0,buff.find(','));
+        buff = buff.substr(buff.find(',') + 1,buff.size());
+        it = _vchannel.find(name_channel);
+        if(it == _vchannel.end())
+            throw ERR_NOSUCHCHANNEL();
+        // it = _vchannel.find(client->first);
+        if(it == _vchannel.end())
+            throw ERR_NOTONCHANNEL();
+        it->second.removeClient(client->first,client->first);
+    }
+    name_channel = buff.substr(0,buff.size());
+    it = _vchannel.find(name_channel);
+    if(it == _vchannel.end())
+            throw ERR_NOSUCHCHANNEL();
+    
+    it->second.removeClient(client->first,client->first);
 }
 
 void Server::commandInvite(std::string buff,std::map<int,Client>::iterator client){
@@ -266,7 +305,8 @@ void Server::commandInvite(std::string buff,std::map<int,Client>::iterator clien
 
     it = _vchannel.find(name_channel);
     if(it == _vchannel.end())
-        throw ChannelDoesntExist();
+        throw ERR_NOSUCHCHANNEL();
+
     if (client->first == it->second.getOperator())
         it->second.addClient(id->first);
 }
@@ -287,7 +327,7 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client ,
             commandJoin(buff,client);
         else if (buff.size() > 5 && buff.substr(0,5).compare("KICK ") == 0)
             commandKick(buff,client);
-        else if (buff.size() > 8 && buff.substr(0,8).compare("PART ") == 0)
+        else if (buff.size() > 5 && buff.substr(0,5).compare("PART ") == 0)
             commandPart(buff,client);
         else if (buff.size() > 8 && buff.substr(0,8).compare("PRIVMSG ") == 0)
             commandPrivMsg(buff,client);
@@ -338,7 +378,7 @@ void Server::check_password(std::map<int,Client>::iterator& it, std::string pass
     if(buffer.size() < 5 || buffer.compare(0,5,"PASS "))
         throw CommandDoesntExist();
     if(password.compare(buffer) != 0)
-        throw WrongPassword();
+        throw ERR_PASSWDMISMATCH();
     else
     {
         it->second.setStatus(1);

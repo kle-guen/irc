@@ -26,7 +26,13 @@ class Channel
         void removeClient(int id,int id_remover);
         void setPassword(std::string password);
         int getOperator();
+
         void changeOperator(int old_operator,int new_operator);
+
+        void removeOperator(int old_operator,int new_operator);
+        void addOperator(int old_operator,int new_operator);
+        void invertOperator(int old_operator,int new_operator);
+        
         void setInvite(int type);
         bool getInvite();
         std::string getPassword() const;
