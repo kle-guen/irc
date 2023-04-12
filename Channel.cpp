@@ -35,6 +35,14 @@ int Channel::getOperator()
     return(*this->_client_base.begin());
 }
 
+int  Channel::find_client(int id){
+    std::deque<int>::iterator it;
+
+    for(it = _client_base.begin();it != _client_base.end();it++)
+        if(*it == id)
+            return(1);
+    return(0);
+}
 
 
 void Channel::removeOperator(int old_operator,int new_operator){
@@ -76,10 +84,10 @@ void Channel::sendMessage(std::string name, int id, std::string message)
     }
 }
 
-void Channel::removeClient(int id,int id_remover)
+void Channel::removeClient(int id,int id_remover, bool type)
 {
     std::deque<int>::iterator it = this->_client_base.begin();
-    if (id_remover != *it)
+    if (id_remover != *it && type)
         return ;
     while(it!= this->_client_base.end())
     {

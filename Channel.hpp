@@ -23,16 +23,17 @@ class Channel
         void sendMessage(std::string name, int id, std::string message);
         void setName(std::string name);
         std::string getName() const;
-        void removeClient(int id,int id_remover);
+        void removeClient(int id,int id_remover, bool type);
         void setPassword(std::string password);
-        int getOperator();
+        int  getOperator();
+        int  find_client(int id);
 
         void changeOperator(int old_operator,int new_operator);
 
         void removeOperator(int old_operator,int new_operator);
         void addOperator(int old_operator,int new_operator);
         void invertOperator(int old_operator,int new_operator);
-        
+
         void setInvite(int type);
         bool getInvite();
         std::string getPassword() const;

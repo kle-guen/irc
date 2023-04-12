@@ -25,6 +25,10 @@ const char* Server::WrongParameterMODE::what() const throw(){
     return("[Error]Paramètres: #<channel> {[+|-]|o|i|t} [<user>]\n");
 }
 
+const char* Server::WrongParameterPRIVMSG::what() const throw(){
+    return("[Error]Paramètres: <receiver> <text to be sent>\n");
+}
+
 const char* Server::WrongParameterJOIN::what() const throw(){
     return("[Error]Paramètres: #<channel> <password>\n");
 }
@@ -143,8 +147,9 @@ void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client)
         if (buff.substr(0,len).compare(it->first) == 0 && it->second.getInvite() == false)
         {
             if(buff.substr(len + 1,buff.size() - len - 1).compare(it->second.getPassword()) == 0)
-
-            it->second.addClient(client->first);
+                it->second.addClient(client->first);
+            else
+                throw ERR_BADCHANNELKEY();
             return;
         }
     }
@@ -179,14 +184,15 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
     len = buff.find(' ');
     if (len == -1)
         throw WrongParameterKICK();
-    channel = buff.substr(0,buff.find(' '));
-    buff = buff.substr(buff.find(' ') + 1,buff.size());
-    message = buff.substr(0,buff.size());
 
+    channel = buff.substr(0,buff.find(' '));
     it = _vchannel.find(channel);
     if(it == _vchannel.end())
         throw ERR_NOSUCHCHANNEL();
-    it->second.removeClient(find_socket(target)->first, client->first);
+
+    buff = buff.substr(buff.find(' ') + 1,buff.size());
+    message = buff.substr(0,buff.size());
+    it->second.removeClient(find_socket(target)->first, client->first,1);
 }
 
 void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
@@ -194,7 +200,14 @@ void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator clie
     std::string message;
     
     buff = buff.substr(8,buff.size());
+    int len = buff.find(' ');
+    if (len == -1)
+        throw WrongParameterPRIVMSG();
+
     target = buff.substr(0,buff.find(' '));
+    if (find_socket(target) != _server.end())
+        throw ERR_USERSDONTMATCH();
+
     message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
     for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
     {
@@ -257,7 +270,6 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
         it->second.setInvite(false);
 }
 
-
 void Server::commandPart(std::string buff,std::map<int,Client>::iterator client){
 
     std::map<std::string,Channel>::iterator it;
@@ -274,17 +286,17 @@ void Server::commandPart(std::string buff,std::map<int,Client>::iterator client)
         it = _vchannel.find(name_channel);
         if(it == _vchannel.end())
             throw ERR_NOSUCHCHANNEL();
-        // it = _vchannel.find(client->first);
-        if(it == _vchannel.end())
+        if(!it->second.find_client(client->first))
             throw ERR_NOTONCHANNEL();
-        it->second.removeClient(client->first,client->first);
+        it->second.removeClient(client->first,client->first,0);
     }
     name_channel = buff.substr(0,buff.size());
     it = _vchannel.find(name_channel);
     if(it == _vchannel.end())
             throw ERR_NOSUCHCHANNEL();
-    
-    it->second.removeClient(client->first,client->first);
+    if(!it->second.find_client(client->first))
+            throw ERR_NOTONCHANNEL();
+    it->second.removeClient(client->first,client->first,0);
 }
 
 void Server::commandInvite(std::string buff,std::map<int,Client>::iterator client){
@@ -311,6 +323,46 @@ void Server::commandInvite(std::string buff,std::map<int,Client>::iterator clien
         it->second.addClient(id->first);
 }
 
+void Server::commandNotice(std::string buff,std::map<int,Client>::iterator client){
+    std::string target;
+    std::string message;
+    
+    buff = buff.substr(8,buff.size());
+    target = buff.substr(0,buff.find(' '));
+    message = buff.substr(buff.find(' ') + 1, buff.size() - buff.find(' ') - 1);
+    for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
+    {
+        if (buff.find(' ') != std::string::npos && it->second.getNick_name().compare(target) == 0)
+        {
+
+            send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
+            send(it->first," :",2,0);
+            send(it->first,message.c_str(),message.size(),0);
+        }
+    }
+}
+void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client){
+    std::map<std::string,Channel>::iterator it_c;
+    std::string out;
+
+    for (it_c = _vchannel.begin(); it_c != _vchannel.end(); it_c++)
+            if (it_c->second.find_client(client->first))
+                it_c->second.removeClient(client->first, client->first, 0);
+    if (buff.empty())
+    {    
+        out.append(client->second.getNick_name() + " quits\n");           //message par default ?
+        send(client->first, out.c_str(),out.size(),0);
+    }
+    else
+    {
+        out = buff.substr(buff.find(' ') + 1, buff.size());
+        out.append("\n");
+        send(client->first,out.c_str(),out.size(),0);
+    }
+    close(client->first);
+    _server.erase(client->first);
+}
+
 void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client , std::string password)
 {
     std::string outerror;
@@ -335,6 +387,10 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client ,
             commandMode(buff,client);
         else if (buff.size() > 7 && buff.substr(0,7).compare("INVITE ") == 0)
             commandInvite(buff,client);
+        else if (buff.size() > 7 && buff.substr(0,7).compare("NOTICE ") == 0)
+            commandNotice(buff,client);
+        else if (buff.size() > 5 && buff.substr(0,5).compare("QUIT ") == 0)
+            commandQuit(buff,client);
         else
             throw CommandDoesntExist();
     }

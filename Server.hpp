@@ -43,6 +43,10 @@ public:
     void commandTopic(std::string buff, std::map<int, Client>::iterator client);
     void commandInvite(std::string buff, std::map<int, Client>::iterator client);
     void commandPart(std::string buff, std::map<int, Client>::iterator client);
+    void commandNotice(std::string buff,std::map<int,Client>::iterator client);
+    void commandQuit(std::string buff,std::map<int,Client>::iterator client);
+
+    
 
     std::map<int, Client>::iterator find_socket(std::string target);
     std::map<std::string, Channel> getVchannel() const;
@@ -54,6 +58,11 @@ private:
         virtual const char *what() const throw();
     };
     class WrongParameterKICK : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class WrongParameterPRIVMSG : public std::exception
     {
     public:
         virtual const char *what() const throw();
