@@ -36,6 +36,7 @@ public:
     void parseComma(std::string buff, std::vector<std::string> &target,size_t next_space);
     void executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     int find_socket_channel(int id,std::deque<int> _vchannel);
+    void compareName(std::string target,int type);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it, std::string password);
     void commandSend(std::string buff, std::map<int, Client>::iterator it);
@@ -49,8 +50,8 @@ public:
     void commandNotice(std::string buff,std::map<int,Client>::iterator client);
     void commandQuit(std::string buff,std::map<int,Client>::iterator client);
 
-    
-
+    std::string getPassword();
+    void setPassword(std::string input_password);
     std::map<int, Client>::iterator find_socket(std::string target);
     std::map<std::string, Channel> getVchannel() const;
 
@@ -58,6 +59,7 @@ private:
 
     std::map<int, Client> _server;
     std::map<std::string, Channel> _vchannel;
+    std::string password;
     class WrongParameterMODE : public std::exception
     {
     public:
@@ -109,6 +111,17 @@ private:
         virtual const char *what() const throw();
     };
     class ERR_NOTEXTTOSEND : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+
+    class ERR_NICKNAMEINUSE : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_NONICKNAMEGIVEN : public std::exception
     {
     public:
         virtual const char *what() const throw();

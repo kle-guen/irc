@@ -65,6 +65,22 @@ const char* Server::ERR_NOTONCHANNEL::what() const throw(){
     return("[Error] :You're not on that channel\n");
 }
 
+const char* Server::ERR_NICKNAMEINUSE::what() const throw(){
+    return("[Error] :Nickname is already in use\n");
+}
+
+const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
+    return("[Error] :No nickname given\n");
+}
+
+std::string Server::getPassword(){
+    return(password);
+}
+
+void Server::setPassword(std::string input_password){
+    password = input_password;
+}
+
 void    Server::parseComma(std::string buff, std::vector<std::string> &target, size_t next_space){
     int i = 0;
 
@@ -89,6 +105,24 @@ void    Server::parseComma(std::string buff, std::vector<std::string> &target, s
     else
         target.push_back(buff.substr(0,buff.find(' ')));
 }
+
+void    Server::compareName(std::string src, int type){
+    std::string target;
+    std::transform(src.begin(),src.end(),src.begin(),::tolower);
+    if(src.size() == 0)
+        throw ERR_NONICKNAMEGIVEN();
+    for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
+    {
+        if(type == 0)
+            target = it->second.getNick_name();
+        else
+            target = it->second.getUser_name();
+        std::transform(target.begin(),target.end(),target.begin(),::tolower);
+        if(src.compare(target) == 0)
+            throw ERR_NICKNAMEINUSE();
+    }
+}
+
 
 int check_mode_option(std::string option){
     if(option[0] == 'o' && option.size() == 1)
@@ -279,8 +313,12 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
 
     buff = buff.substr(buff.find(' ') + 1,buff.size());
     message = buff.substr(0,buff.size());
+    message.append("\n");
     if(it->second.isOperator(client->first) == 1)
+    {
         it->second.removeClient(find_socket(target)->first);
+        send(find_socket(target)->first,message.c_str(),message.size(),0);
+    }
 }
 
 void Server::commandPrivMsg(std::string buff,std::map<int,Client>::iterator client){
@@ -390,6 +428,8 @@ void Server::commandPart(std::string buff,std::map<int,Client>::iterator client)
         if(!it->second.find_client(client->first))
             throw ERR_NOTONCHANNEL();
         it->second.removeClient(client->first);
+        if(it->second.getNbOperator() == 0)
+            _vchannel.erase(it->first);
     }
 }
 
@@ -522,7 +562,9 @@ void Server::check_nick_name(std::map<int,Client>::iterator& it, std::string buf
         throw CommandDoesntExist();
     else
     {
-        it->second.setNickName(buffer.substr(5,buffer.size() - 5));
+        buffer = buffer.substr(5,buffer.size() - 5);
+        compareName(buffer, 0);
+        it->second.setNickName(buffer);
         it->second.setStatus(2);
         outputstr.append(it->second.getNick_name());
         outputstr.append("\n");
@@ -537,7 +579,9 @@ void Server::check_user_name(std::map<int,Client>::iterator& it, std::string buf
         throw CommandDoesntExist();
     else
     {
-        it->second.setUserName(buffer.substr(5,buffer.size() - 5));
+        buffer = buffer.substr(5,buffer.size() - 5);
+        compareName(buffer, 1);
+        it->second.setUserName(buffer);
         it->second.setStatus(3);
         outputstr.append(it->second.getUser_name());
         outputstr.append("\n");
