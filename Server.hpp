@@ -27,18 +27,18 @@ public:
     ~Server();
 
     void initServer(char **av);
-    void message_receiver(std::map<int, Client>::iterator it, std::string password);
+    void message_receiver(std::map<int, Client>::iterator it);
     void erase_map_element(std::map<int, Client>::iterator &it);
-    void check_password(std::map<int, Client>::iterator &it, std::string password, std::string buffer);
-    void check_nick_name(std::map<int, Client>::iterator &it, std::string buffer);
-    void check_user_name(std::map<int, Client>::iterator &it, std::string buffer);
+    void commandPass(std::map<int, Client>::iterator &it, std::string buffer);
+    void commandNick(std::map<int, Client>::iterator &it, std::string buffer);
+    void commandUser(std::map<int, Client>::iterator &it, std::string buffer);
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
     void parseComma(std::string buff, std::vector<std::string> &target,size_t next_space);
     void executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     int find_socket_channel(int id,std::deque<int> _vchannel);
     void compareName(std::string target,int type);
 
-    void choose_cmd(std::string buff, std::map<int, Client>::iterator it, std::string password);
+    void choose_cmd(std::string buff, std::map<int, Client>::iterator it);
     void commandSend(std::string buff, std::map<int, Client>::iterator it);
     void commandPrivMsg(std::string buff, std::map<int, Client>::iterator it);
     void commandKick(std::string buff, std::map<int, Client>::iterator client);
