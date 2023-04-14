@@ -106,11 +106,9 @@ void    Server::parseComma(std::string buff, std::vector<std::string> &target, s
         target.push_back(buff.substr(0,buff.find(' ')));
 }
 
-void    Server::compareName(std::string src, int type){
+int    Server::compareName(std::string src, int type){
     std::string target;
     std::transform(src.begin(),src.end(),src.begin(),::tolower);
-    if(src.size() == 0)
-        throw ERR_NONICKNAMEGIVEN();
     for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
     {
         if(type == 0)
@@ -119,8 +117,9 @@ void    Server::compareName(std::string src, int type){
             target = it->second.getUser_name();
         std::transform(target.begin(),target.end(),target.begin(),::tolower);
         if(src.compare(target) == 0)
-            throw ERR_NICKNAMEINUSE();
+            return(1);
     }
+    return(0);
 }
 
 
@@ -226,6 +225,7 @@ void    Server::initServer(char **av)
             tmp_client_socket = accept(server_sock,(struct sockaddr*)&tmp_client_addr, &tmp_client_len);
             Client test;
             _server.insert(std::pair<int,Client>(tmp_client_socket,test));
+                send(tmp_client_socket,"PASS <password>\n",16,0);
         }
 
         //checker de changement au nv du socket_client
@@ -529,35 +529,57 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client)
 }
 
 void Server::commandPass(std::map<int,Client>::iterator& it, std::string buffer){
-    std::string outputstr("[1] [PASS CORRECT]\n");
+    std::string outputstr("[1] [PASS CORRECT]\n\n");
+    std::string parameters("PASS <password>\n");
+    std::string parameters_nick("NICK <username>\n");
 
     buffer = buffer.substr(5,buffer.size() - 5);
     if (this->password.compare(buffer) != 0)
+    {
+        send(it->first, parameters.c_str() ,parameters.size(),0);
         throw ERR_PASSWDMISMATCH();
+    }
     else
     {
         it->second.setStatus(1);
         send(it->first,outputstr.c_str(),outputstr.size(),0);
+        send(it->first,parameters_nick.c_str(),parameters_nick.size(),0);
     }
 }
 
 void Server::commandNick(std::map<int,Client>::iterator& it, std::string buffer){
     std::string outputstr("[2] [NICK NAME SET] : ");
+    std::string parameters("NICK <nickname>\n");
+    std::string parameters_user("USER <username>\n");
 
     buffer = buffer.substr(5,buffer.size() - 5);
-    compareName(buffer, 0);
+    if(buffer.size() == 0)
+        throw ERR_NONICKNAMEGIVEN();
+    if(compareName(buffer, 0))
+    {
+        send(it->first,parameters.c_str(),parameters.size(),0);
+        throw ERR_NICKNAMEINUSE();
+    }
     it->second.setNickName(buffer);
     it->second.setStatus(2);
     outputstr.append(it->second.getNick_name());
-    outputstr.append("\n");
+    outputstr.append("\n\n");
     send(it->first, outputstr.c_str() ,outputstr.size(),0);
+    send(it->first,parameters_user.c_str(),parameters_user.size(),0);
 }
 
 void Server::commandUser(std::map<int,Client>::iterator& it, std::string buffer){
     std::string outputstr("[3] [USER NAME SET] : ");
+    std::string parameters("USER <username>\n");
     
     buffer = buffer.substr(5,buffer.size() - 5);
-    compareName(buffer, 1);
+    if(buffer.size() == 0)
+        throw ERR_NONICKNAMEGIVEN();
+    if(compareName(buffer, 1))
+    {
+        send(it->first,parameters.c_str(),parameters.size(),0);
+        throw ERR_NICKNAMEINUSE();
+    }
     it->second.setUserName(buffer);
     it->second.setStatus(3);
     outputstr.append(it->second.getUser_name());
