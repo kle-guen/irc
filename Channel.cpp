@@ -3,7 +3,6 @@
 #include <vector>
 Channel::Channel()
 {
-
 }
 
 Channel::Channel(Channel const & src)
@@ -20,7 +19,7 @@ Channel &Channel::operator=(Channel const & rhs)
 Channel::Channel(int id, std::string name)
 {
     _mode.i = false;
-    _mode.o =1;
+    _mode.o = 1;
     std::cout<<"Chanel Constructor"<<std::endl;
     this->_client_base.push_back(id);
     this->_name = name;
@@ -62,6 +61,11 @@ void Channel::changeOperator(int old_operator,int new_operator)
         this->_client_base.erase(it);
     }
 }
+void Channel::setMode(){
+    _mode.i = false;
+    _mode.o = 1;
+}
+
 
 int Channel::isOperator(int id)
 {
@@ -136,6 +140,10 @@ void Channel::invertOperator(int new_operator)
     }
 }
 
+std::deque<int> Channel::getClientBase(){
+    return(_client_base);
+}
+
 void Channel::sendMessage(std::string name, int id, std::string message)
 {
     std::deque<int>::iterator it = this->_client_base.begin();
@@ -153,10 +161,12 @@ void Channel::sendMessage(std::string name, int id, std::string message)
 void Channel::removeClient(int id)
 {
     std::deque<int>::iterator it = this->_client_base.begin();
-    while(it!= this->_client_base.end())
+    while(it != this->_client_base.end())
     {
         if (id == *it)
         {
+            if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,id) != this->_client_base.begin()+this->_mode.o)
+                this->_mode.o--;
             this->_client_base.erase(it);
             return;
         }

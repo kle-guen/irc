@@ -22,7 +22,7 @@ Server::~Server()
 }
 
 const char* Server::WrongParameterMODE::what() const throw(){
-    return("[Error] :Paramètres: #<channel> {[+|-]|o|i|t} [<user>]\n");
+    return("[Error] :Paramètres: #<channel> {[+|-]|o|i} [<user>]\n");
 }
 
 const char* Server::WrongParameterPRIVMSG::what() const throw(){
@@ -245,13 +245,13 @@ void Server::commandJoin(std::string buff,std::map<int,Client>::iterator client)
     {
         if(channel_exist[i] != 1)
         {
-            this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));//push_back(Channel(it->first,buff.substr(0,buff.find(' '))));
+            this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));
+            _vchannel[name_channel[i]].setMode();
             _vchannel[name_channel[i]].addClient(client->first);
             _vchannel[name_channel[i]].setPassword(password[i]);
         }
     }
 }
-
 
 void Server::commandKick(std::string buff,std::map<int,Client>::iterator client){
     std::string target;
@@ -263,16 +263,19 @@ void Server::commandKick(std::string buff,std::map<int,Client>::iterator client)
     int len = buff.find(' ');
     if (len == -1)
         throw WrongParameterKICK();
-    target = buff.substr(0,len);
-    buff = buff.substr(buff.find(' ') + 1,buff.size());
-    len = buff.find(' ');
-    if (len == -1)
-        throw WrongParameterKICK();
-
+    
     channel = buff.substr(0,buff.find(' '));
     it = _vchannel.find(channel);
     if(it == _vchannel.end())
         throw ERR_NOSUCHCHANNEL();
+
+    buff = buff.substr(buff.find(' ') + 1,buff.size());
+    if(buff.find(' ') == std::string::npos)
+        throw WrongParameterKICK();
+    target = buff.substr(0,buff.find(' '));
+
+    if (it->second.find_client(find_socket(target)->first) == 0)
+        throw ERR_NOTONCHANNEL();
 
     buff = buff.substr(buff.find(' ') + 1,buff.size());
     message = buff.substr(0,buff.size());
@@ -341,6 +344,7 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     std::string name_channel;
     std::string Name;
     
+    (void)client;
     buff = buff.substr(5,buff.size());
     int len = buff.find(' ');
     if (len == -1)
@@ -364,7 +368,7 @@ void Server::commandMode(std::string buff,std::map<int,Client>::iterator client)
     }
     if(check_mode_option(option))
         throw WrongParameterMODE();
-    executemode(option, it, client);
+    executemode(option, it, id);
 }
 
 void Server::commandPart(std::string buff,std::map<int,Client>::iterator client){

@@ -35,6 +35,7 @@ public:
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
     void parseComma(std::string buff, std::vector<std::string> &target,size_t next_space);
     void executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
+    int find_socket_channel(int id,std::deque<int> _vchannel);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it, std::string password);
     void commandSend(std::string buff, std::map<int, Client>::iterator it);

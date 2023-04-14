@@ -22,22 +22,26 @@ class Channel
         Channel & operator=(Channel const & rhs);
         void addClient(int id);
         void sendMessage(std::string name, int id, std::string message);
-        void setName(std::string name);
         std::string getName() const;
         void removeClient(int id);
-        void setPassword(std::string password);
         int getOperator();
         int getNbOperator();
         int isOperator(int id);
         int  find_client(int id);
 
-        void changeOperator(int old_operator,int new_operator);
+        
+        void setName(std::string name);
+        void setPassword(std::string password);
+        void setMode();
+        void setInvite(int type);
 
+
+        void changeOperator(int old_operator,int new_operator);
         void removeOperator(int new_operator);
         void addOperator(int new_operator);
         void invertOperator(int new_operator);
         
-        void setInvite(int type);
+        std::deque<int> getClientBase();
         bool getInvite();
         std::string getPassword() const;
 
