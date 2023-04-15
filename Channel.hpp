@@ -10,6 +10,7 @@
 typedef struct s_mode
 {
     bool i;
+    bool t;
     int o;
 }   t_mode;
 
@@ -34,6 +35,10 @@ class Channel
         void setPassword(std::string password);
         void setMode();
         void setInvite(int type);
+        void setTopic(bool stat);
+        void setTopicMessage(std::string message);
+
+
 
 
         void changeOperator(int old_operator,int new_operator);
@@ -43,12 +48,15 @@ class Channel
         
         std::deque<int> getClientBase();
         bool getInvite();
+        bool getTopic(bool stat);
         std::string getPassword() const;
+        std::string getTopicMessage();
 
         ~Channel();
     private:
         std::string _name;
         std::string _password;
+        std::string _topic;
         t_mode _mode;
         std::deque<int> _client_base;
 };

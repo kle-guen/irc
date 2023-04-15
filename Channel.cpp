@@ -62,10 +62,26 @@ void Channel::changeOperator(int old_operator,int new_operator)
     }
 }
 void Channel::setMode(){
-    _mode.i = false;
-    _mode.o = 1;
+    this->_mode.i = false;
+    this->_mode.t = false;
+    this->_mode.o = 1;
 }
 
+void Channel::setTopic(bool stat){
+    this->_mode.t = stat;
+}
+
+bool Channel::getTopic(bool stat){
+    return(this->_mode.t);
+}
+
+void Channel::setTopicMessage(std::string message){
+    this->_topic = message;
+}
+
+std::string Channel::getTopicMessage(){
+    return(this->_topic);
+}
 
 int Channel::isOperator(int id)
 {
