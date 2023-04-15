@@ -71,7 +71,7 @@ void Channel::setTopic(bool stat){
     this->_mode.t = stat;
 }
 
-bool Channel::getTopic(bool stat){
+bool Channel::getTopic(){
     return(this->_mode.t);
 }
 

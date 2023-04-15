@@ -48,7 +48,7 @@ class Channel
         
         std::deque<int> getClientBase();
         bool getInvite();
-        bool getTopic(bool stat);
+        bool getTopic();
         std::string getPassword() const;
         std::string getTopicMessage();
 
