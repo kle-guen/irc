@@ -6,7 +6,7 @@ CFLAGS		= -Wall -Werror -Wextra -g -std=c++98
 RM			= rm -rf
 
 # SRCS:
-NAME		=   irc
+NAME		=   ircserv
 FILES		=	main.cpp \
 				Client.cpp \
 				Server.cpp \
