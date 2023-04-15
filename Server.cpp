@@ -260,6 +260,8 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     std::vector<std::string> name_channel;
     std::vector<std::string> password;
     Channel instance_channel;
+    std::string message_add("Client Added\n");
+    std::string message_creat("Channel Created\n");
 
     channel_exist.reserve(100);
     if(cmd.size() != 3)
@@ -281,7 +283,12 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
             if (name_channel[i].compare(it->first) == 0 && it->second.getInvite() == false)
             {
                 if(password[i].compare(it->second.getPassword()) == 0)
+                {
+                    send(client->first,message_add.c_str(),message_add.size(),0);
                     it->second.addClient(client->first);
+                    if(it->second.getTopic() == 1)
+                        send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+                }
                 else
                     throw ERR_BADCHANNELKEY();
                 channel_exist[i] = 1;
@@ -294,6 +301,7 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     {
         if(channel_exist[i] != 1)
         {
+            send(client->first,message_creat.c_str(),message_creat.size(),0);
             this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));
             _vchannel[name_channel[i]].setMode();
             _vchannel[name_channel[i]].addClient(client->first);
@@ -302,8 +310,27 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     }
 }
 
+void Server::commandTopic( std::vector<std::string> cmd,std::map<int,Client>::iterator& client){
+    std::map<std::string,Channel>::iterator it;
+    std::string message_to_client("Command TOPIC executed\n");
+    if(cmd.size() != 3 && cmd.size() != 2)
+        throw ERR_NEEDMOREPARAMS(TOPIC);
+    
+    it = _vchannel.find(cmd[1]);
+    if(it == _vchannel.end())
+        throw ERR_NOSUCHCHANNEL();
+    if(it->second.isOperator(client->first) && cmd.size() == 3 && it->second.getTopic() == 1)
+    {
+        cmd[2].append("\n");
+        it->second.setTopicMessage(cmd[2]);
+        send(client->first,message_to_client.c_str(),message_to_client.size(),0);
+    }
+    else if(cmd.size() == 2)
+        send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+}
+
 void Server::commandKick(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
-    std::string message;
+    std::string message_to_client("Command KICK executed\n");
     std::map<std::string,Channel>::iterator it;
 
     if(cmd.size() != 4)
@@ -319,12 +346,14 @@ void Server::commandKick(std::vector<std::string> cmd,std::map<int,Client>::iter
     cmd[3].append("\n");
     if(it->second.isOperator(client->first) == 1)
     {
+        send(client->first,message_to_client.c_str(),message_to_client.size(),0);
         it->second.removeClient(find_socket(cmd[2])->first);
-        send(find_socket(cmd[2])->first,message.c_str(),message.size(),0);
+        send(find_socket(cmd[2])->first,cmd[3].c_str(),cmd[3].size(),0);
     }
 }
 
 void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command PRIVMSG executed\n");
     std::vector<std::string> target;
     std::string message;
 
@@ -340,7 +369,7 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
         {
             if (it->second.getNick_name().compare(target[i]) == 0)
             {
-
+                send(client->first,message_to_client.c_str(),message_to_client.size(),0);
                 send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
                 send(it->first," :",2,0);
                 send(it->first,message.c_str(),message.size(),0);
@@ -350,19 +379,41 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
 }
 
 void Server::executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client){
-    if(option[0] == 'o')
+    if(option[0] == 'o' && option.size() == 1)
         it->second.invertOperator(client->first);
     else if(option[1] == 'o' && option[0] == '+')
         it->second.addOperator(client->first);
     else if(option[1] == 'o' && option[0] == '-')
         it->second.removeOperator(client->first);
+    if(option[0] == 'i' && option.size() == 1)
+    {
+        if(it->second.getInvite() == 1)
+            it->second.setInvite(0);
+        else
+            it->second.setInvite(1);
+    }
     else if(option[1] == 'i' && option[0] == '+')
         it->second.setInvite(true);
     else if(option[1] == 'i' && option[0] == '-')
         it->second.setInvite(false);
+
+    if(option[0] == 't' && option.size() == 1)
+    {
+        if(it->second.getTopic() == 1)
+            it->second.setTopic(0);
+        else
+            it->second.setTopic(1);
+    }
+    else if(option[1] == 't' && option[0] == '-')
+        it->second.setTopic(false);
+    else if(option[1] == 't' && option[0] == '+')
+        it->second.setTopic(true);
+    else
+        return ;
 }
 
 void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command MODE executed\n");
     std::map<std::string,Channel>::iterator it;
     std::map<int,Client> ::iterator id;
     
@@ -381,9 +432,12 @@ void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iter
     if(check_mode_option(cmd[2]))
         throw ERR_NEEDMOREPARAMS(MODE);
     executemode(cmd[2], it, id);
+    
+    send(client->first,message_to_client.c_str(),message_to_client.size(),0);
 }
 
 void Server::commandPart(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command PART executed\n");
 
     std::map<std::string,Channel>::iterator it;
     // std::string name_channel;
@@ -403,10 +457,12 @@ void Server::commandPart(std::vector<std::string> cmd,std::map<int,Client>::iter
         it->second.removeClient(client->first);
         if(it->second.getNbOperator() == 0)
             _vchannel.erase(it->first);
+        send(client->first,message_to_client.c_str(),message_to_client.size(),0);
     }
 }
 
 void Server::commandInvite(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command INVITE executed\n");
     std::map<std::string,Channel>::iterator it;
     std::map<int,Client> ::iterator id;
     std::string name_channel;
@@ -422,10 +478,14 @@ void Server::commandInvite(std::vector<std::string> cmd,std::map<int,Client>::it
         throw ERR_NOSUCHCHANNEL();
 
     if (client->first == it->second.getOperator())
+    {
         it->second.addClient(id->first);
+        send(client->first,message_to_client.c_str(),message_to_client.size(),0);
+    }
 }
 
 void Server::commandNotice(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command NOTICE executed\n");
     std::vector<std::string> target;
     std::string message;
     
@@ -439,7 +499,7 @@ void Server::commandNotice(std::vector<std::string> cmd,std::map<int,Client>::it
         {
             if (it->second.getNick_name().compare(target[i]) == 0)
             {
-
+                send(client->first,message_to_client.c_str(),message_to_client.size(),0);
                 send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
                 send(it->first," :",2,0);
                 send(it->first,message.c_str(),message.size(),0);
@@ -449,6 +509,7 @@ void Server::commandNotice(std::vector<std::string> cmd,std::map<int,Client>::it
 }
 
 void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client){
+    std::string message_to_client("Command QUIT executed\n");
     std::map<std::string,Channel>::iterator it_c;
     std::string out;
 
@@ -478,7 +539,7 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client)
         out.append("\n");
         sendFromClient(client, out);
     }
-
+    send(client->first,message_to_client.c_str(),message_to_client.size(),0);
     close(client->first);
     _server.erase(client->first);
 }
@@ -532,6 +593,8 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client)
             commandMode(cmd,client);
         else if (buff.compare(0,7,"INVITE ") == 0)
             commandInvite(cmd,client);
+        else if (buff.compare(0,6,"TOPIC ") == 0)
+            commandTopic(cmd,client);
         else if (buff.compare(0,7,"NOTICE ") == 0)
             commandNotice(cmd,client);
         else if (buff.size() > 5 && buff.substr(0,5).compare("QUIT ") == 0)
@@ -568,6 +631,7 @@ void Server::commandPass(std::map<int,Client>::iterator& it, std::vector<std::st
         send(it->first,parameters_nick.c_str(),parameters_nick.size(),0);
     }
 }
+
 
 void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::string> cmd){
     std::string outputstr("[2] [NICK NAME SET] : ");

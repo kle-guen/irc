@@ -207,6 +207,10 @@ std::string Channel::getPassword() const{
     return(_password);
 }
 
+std::string Channel::getTopicString(){
+    return(_topic);
+}
+
 void Channel::addClient(int id)
 {
     std::deque<int>::iterator it = this->_client_base.begin();

@@ -49,11 +49,11 @@ public:
     void commandPrivMsg(std::vector<std::string> cmd, std::map<int, Client>::iterator it);
     void commandKick(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandMode(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
-    void commandTopic(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandInvite(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandPart(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandNotice(std::vector<std::string> cmd,std::map<int,Client>::iterator client);
     void commandQuit(std::string buff,std::map<int,Client>::iterator client);
+    void commandTopic( std::vector<std::string> cmd,std::map<int,Client>::iterator& client);
 
     int getTypeError(void){return(_type_error);}
     std::string getPassword();

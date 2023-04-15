@@ -25,12 +25,16 @@ class Channel
         void sendMessage(std::string name, int id, std::string message);
         std::string getName() const;
         void removeClient(int id);
-        int getOperator();
-        int getNbOperator();
         int isOperator(int id);
         int  find_client(int id);
 
         
+        int getNbOperator();
+        int getOperator();
+        bool getTopic();
+        std::string getTopicString();
+        bool getInvite();
+
         void setName(std::string name);
         void setPassword(std::string password);
         void setMode();
@@ -38,17 +42,12 @@ class Channel
         void setTopic(bool stat);
         void setTopicMessage(std::string message);
 
-
-
-
         void changeOperator(int old_operator,int new_operator);
         void removeOperator(int new_operator);
         void addOperator(int new_operator);
         void invertOperator(int new_operator);
         
         std::deque<int> getClientBase();
-        bool getInvite();
-        bool getTopic();
         std::string getPassword() const;
         std::string getTopicMessage();
 
