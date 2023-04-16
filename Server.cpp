@@ -121,6 +121,24 @@ void    Server::parseComma(std::string buff, std::vector<std::string> &target){
 int    Server::compareName(std::string src, int type){
     std::string target;
     std::transform(src.begin(),src.end(),src.begin(),::tolower);
+    for (unsigned long i=0; i< src.size();i++)
+    {
+        if (src[i]=='_')
+            src[i]='-';
+        else if (src[i]=='|')
+            src[i]='\\';
+        else if (src[i]=='{')
+            src[i]='[';
+        else if (src[i]=='}')
+            src[i]=']';
+    }
+    for (unsigned long i=0; i<src.size();i++)
+    {
+        if (src[i]!='`' && src[i]!='^' && src[i]!='-' && src[i]!='\\' && src[i]!='[' && src[i]!='[' && !isalpha(src[i]) && !isdigit(src[i]))
+        {
+            std::cerr<<"error"<<std::endl;/*return ERROR*/
+        }
+    }
     for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
     {
         if(type == 0)
@@ -128,6 +146,18 @@ int    Server::compareName(std::string src, int type){
         else
             target = it->second.getUser_name();
         std::transform(target.begin(),target.end(),target.begin(),::tolower);
+        for (unsigned long i=0; i<target.size();i++)
+        {
+            if (target[i]=='_')
+                target[i]='-';
+            else if (target[i]=='|')
+                target[i]='\\';
+            else if (target[i]=='{')
+                target[i]='[';
+            else if (target[i]=='}')
+                target[i]=']';
+        }
+        std::cerr << target << std::endl;
         if(src.compare(target) == 0)
             return(1);
     }
@@ -166,6 +196,11 @@ void    Server::message_receiver(std::map<int,Client>::iterator it){
     buffer.append(buffer_tmp);
     buffer.erase(len,buffer.size() - len);
     it->second.appendCommand(buffer);
+    if (buffer.empty())
+    {
+        commandQuit(buffer, it);
+        return ;
+    }
     while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
     {
         //do your command
@@ -642,6 +677,8 @@ void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::st
         throw ERR_NEEDMOREPARAMS(NICK);
     if(cmd[2].size() == 0)
         throw ERR_NONICKNAMEGIVEN();
+    if(cmd[2].size() <= 10)
+        std::cerr<<"ERROR SIZE"<<std::endl;/*return error*/
     if(compareName(cmd[1], 0))
     {
         send(it->first,parameters.c_str(),parameters.size(),0);

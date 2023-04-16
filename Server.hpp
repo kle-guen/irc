@@ -66,6 +66,7 @@ private:
     std::map<int, Client> _server;
     std::map<std::string, Channel> _vchannel;
     std::string password;
+    std::vector<string> uper_client;
     
     class ERR_NEEDMOREPARAMS : public std::exception
     {
