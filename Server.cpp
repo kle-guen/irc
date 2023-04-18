@@ -85,6 +85,10 @@ const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
     return("[Error] :No nickname given\n");
 }
 
+const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
+    return("[Error] :Erroneus nickname\n");
+}
+
 std::string Server::getPassword(){
     return(password);
 }
@@ -118,7 +122,7 @@ void    Server::parseComma(std::string buff, std::vector<std::string> &target){
         target.push_back(buff.substr(0,buff.find(' ')));
 }
 
-int    Server::compareName(std::string src, int type){
+int    Server::compareName(std::string src, int type,std::map<int,Client>::iterator& it){
     std::string target;
     std::transform(src.begin(),src.end(),src.begin(),::tolower);
     for (unsigned long i=0; i< src.size();i++)
@@ -136,7 +140,9 @@ int    Server::compareName(std::string src, int type){
     {
         if (src[i]!='`' && src[i]!='^' && src[i]!='-' && src[i]!='\\' && src[i]!='[' && src[i]!='[' && !isalpha(src[i]) && !isdigit(src[i]))
         {
-            std::cerr<<"error"<<std::endl;/*return ERROR*/
+            src+=" :Erroneus nickname";
+            send(it->first,src.c_str(),src.size(),0);
+            throw ERR_ERRONEUSNICKNAME(JOIN);
         }
     }
     for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
@@ -825,7 +831,7 @@ void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::st
         throw ERR_NONICKNAMEGIVEN();
     if(cmd[2].size() <= 10)
         std::cerr<<"ERROR SIZE"<<std::endl;/*return error*/
-    if(compareName(cmd[1], 0))
+    if(compareName(cmd[1], 0,it))
     {
         send(it->first,parameters.c_str(),parameters.size(),0);
         throw ERR_NICKNAMEINUSE();
