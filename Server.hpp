@@ -17,6 +17,8 @@
 #define GREEN "\e[32m"
 #define RED "\e[31m"
 #define RESET "\e[0m"
+#define USERMODE 1
+#define CHANNELMODE 2
 
 enum{PASS,NICK,USER,JOIN,KICK,NOTICE,PRIVMSG,MODE,TOPIC,QUIT,PART,INVITE};
 
@@ -34,7 +36,8 @@ public:
     void erase_map_element(std::map<int, Client>::iterator &it);
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
     void parseComma(std::string buff, std::vector<std::string> &target);
-    void executemode(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
+    void executemode_channel(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
+    void executemode_user(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     int find_socket_channel(int id,std::deque<int> _vchannel);
     int compareName(std::string target,int type);
     void sendFromClient(std::map<int,Client>::iterator client, std::string message);
@@ -66,7 +69,7 @@ private:
     std::map<int, Client> _server;
     std::map<std::string, Channel> _vchannel;
     std::string password;
-    std::vector<string> uper_client;
+    std::vector<std::string> uper_client;
     
     class ERR_NEEDMOREPARAMS : public std::exception
     {

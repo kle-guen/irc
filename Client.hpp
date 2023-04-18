@@ -4,12 +4,21 @@
 #include <iostream>
 #include <string>
 
+
+typedef struct s_mode_user
+{
+    bool i;
+    bool s;
+    bool w;
+}   t_mode_user;
+
 class Client
 {
 private:
     std::string nick_name;
     std::string user_name;
     std::string command;
+    t_mode_user _mode;
     int status;
 protected:
 public:
@@ -32,6 +41,30 @@ public:
 
     std::string getUser_name(){
         return(user_name);
+    }
+    
+    int getInvisible(){
+        return(_mode.i);
+    }
+
+    int getNotification(){
+        return(_mode.s);
+    }
+
+    int getWallops(){
+        return(_mode.w);
+    }
+
+    void setWallops(int n){
+        _mode.w = n;
+    }
+    
+    void setNotification(int n){
+        _mode.s = n;
+    }
+
+    void setInvisible(int n){
+        _mode.i = n;
     }
 
     void setStatus(int n){
