@@ -11,8 +11,6 @@ typedef struct s_mode
 {
     bool i;
     bool t;
-    bool s;
-    bool n;
     bool k;
     bool l;
     int limit;
