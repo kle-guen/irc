@@ -243,6 +243,14 @@ void    Server::message_receiver(std::map<int,Client>::iterator it){
     }
 }
 
+void    Server::init_client_socket(int tmp_client_socket){
+    _server[tmp_client_socket].setStatus(0);
+    _server[tmp_client_socket].setNotification(0);
+    _server[tmp_client_socket].setInvisible(0);
+    _server[tmp_client_socket].setWallops(0);
+    _server[tmp_client_socket].setWallops(0);
+}
+
 void    Server::initServer(char **av)
 {
     //AF_INET = IPv4
@@ -300,7 +308,8 @@ void    Server::initServer(char **av)
             Client test;
             _server.insert(std::pair<int,Client>(tmp_client_socket,test));
             send(tmp_client_socket,"PASS <password>\n",16,0);
-            _server[tmp_client_socket].setStatus(0);
+            init_client_socket(tmp_client_socket);
+
         }
 
         //checker de changement au nv du socket_client
@@ -326,11 +335,12 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     std::string message_creat("Channel Created\n");
 
     channel_exist.reserve(100);
-    if(cmd.size() != 3)
+    if(cmd.size() != 2 && cmd.size() != 3)
         throw ERR_NEEDMOREPARAMS(JOIN);
 
     parseComma(cmd[1],name_channel);
-    parseComma(cmd[2],password);
+    if(cmd.size() == 3)
+        parseComma(cmd[2],password);
 
     for(size_t i = 0; i < name_channel.size();i++)
         if(name_channel[i][0] != '#')
@@ -472,32 +482,12 @@ void Server::executemode_channel(std::string option, std::map<std::string,Channe
     else if(option[1] == 't' && option[0] == '+')
         it->second.setTopic(true);
     
-    if(option[0] == 'p' && option.size() == 1)
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'p' && option[0] == '+')
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'p' && option[0] == '-')
-        std::cout << "channel command"<< std::endl;
-    
-    if(option[0] == 's' && option.size() == 1)
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 's' && option[0] == '+')
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 's' && option[0] == '-')
-        std::cout << "channel command"<< std::endl;
 
     if(option[0] == 'n' && option.size() == 1)
         std::cout << "channel command"<< std::endl;
     else if(option[1] == 'n' && option[0] == '+')
         std::cout << "channel command"<< std::endl;
     else if(option[1] == 'n' && option[0] == '-')
-        std::cout << "channel command"<< std::endl;
-
-    if(option[0] == 'm' && option.size() == 1)
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'm' && option[0] == '+')
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'm' && option[0] == '-')
         std::cout << "channel command"<< std::endl;
 
     if(option[0] == 'l' && option.size() == 1)
@@ -507,77 +497,12 @@ void Server::executemode_channel(std::string option, std::map<std::string,Channe
     else if(option[1] == 'l' && option[0] == '-')
         std::cout << "channel command"<< std::endl;
 
-    if(option[0] == 'b' && option.size() == 1)
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'b' && option[0] == '+')
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'b' && option[0] == '-')
-        std::cout << "channel command"<< std::endl;
-
-    if(option[0] == 'v' && option.size() == 1)
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'v' && option[0] == '+')
-        std::cout << "channel command"<< std::endl;
-    else if(option[1] == 'v' && option[0] == '-')
-        std::cout << "channel command"<< std::endl;
-
     if(option[0] == 'k' && option.size() == 1)
         std::cout << "channel command"<< std::endl;
     else if(option[1] == 'k' && option[0] == '+')
         std::cout << "channel command"<< std::endl;
     else if(option[1] == 'k' && option[0] == '-')
         std::cout << "channel command"<< std::endl;
-}
-void Server::executemode_user(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client){
-    (void)it;
-    (void)client;
-    if(option[0] == 'i' && option.size() == 1)
-    {
-        if(client->second.getInvisible() == 1)
-            client->second.setInvisible(1);
-        else
-            client->second.setInvisible(0);
-    }
-    else if(option[1] == 'i' && option[0] == '+')
-        client->second.setInvisible(1);
-    else if(option[1] == 'i' && option[0] == '-')
-        client->second.setInvisible(0);
-
-    if(option[0] == 'w' && option.size() == 1)
-    {
-        if(client->second.getWallops() == 1)
-            client->second.setWallops(1);
-        else
-            client->second.setWallops(0);
-    }
-    else if(option[1] == 'w' && option[0] == '+')
-        client->second.setWallops(1);
-    else if(option[1] == 'w' && option[0] == '-')
-        client->second.setWallops(0);
-        
-    if(option[0] == 's' && option.size() == 1)
-    {
-        if(client->second.getNotification() == 1)
-            client->second.setNotification(1);
-        else
-            client->second.setNotification(0);
-    }
-    else if(option[1] == 's' && option[0] == '+')
-        client->second.setNotification(1);
-    else if(option[1] == 's' && option[0] == '-')
-        client->second.setNotification(0);
-        
-    if(option[0] == 'o' && option.size() == 1)
-    {
-        if(it->second.isOperator(client->first))
-            it->second.removeOperator(client->first);
-        else
-            it->second.addOperator(client->first);
-    }
-    else if(option[1] == 'o' && option[0] == '+')
-        it->second.addOperator(client->first);
-    else if(option[1] == 'o' && option[0] == '-')
-        it->second.removeOperator(client->first);
 }
 
 void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
@@ -587,33 +512,22 @@ void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iter
     int status = 0;
     
     (void)client;
-    if(cmd.size() > 5)
+    if(cmd.size() < 3 || cmd.size() > 4)
     {
         _type_error = 1;
         throw ERR_NEEDMOREPARAMS(MODE);
     }
 
     it = _vchannel.find(cmd[1]);
-    id = find_socket(cmd[1]);
+    id = find_socket(cmd[3]);
 
     if(it == _vchannel.end() && id == _server.end())
         throw ERR_NOSUCHCHANNEL();
 
-    if(it != _vchannel.end())
-        status = CHANNELMODE;
-    if(it == _vchannel.end() && id != _server.end())
-        status = USERMODE;
-
     if(check_mode_option(cmd[2],status))
         throw ERR_NEEDMOREPARAMS(MODE);
 
-    if(cmd.size() == 4 && status == CHANNELMODE)
-    {
-        id = find_socket(cmd[3]);
-        executemode_channel(cmd[2], it, id);
-    }
-    if(status == USERMODE)
-        executemode_user(cmd[2], it, id);
+    executemode_channel(cmd[2], it, id);
     send(client->first,message_to_client.c_str(),message_to_client.size(),0);
 }
 
