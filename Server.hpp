@@ -36,7 +36,6 @@ public:
     void erase_map_element(std::map<int, Client>::iterator &it);
     int check_channel_exist(std::string chanel, std::map<int, Client>::iterator client);
     void parseComma(std::string buff, std::vector<std::string> &target);
-    void executemode_channel(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     void executemode_user(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     int find_socket_channel(int id,std::deque<int> _vchannel);
     int compareName(std::string target,int type);
@@ -57,6 +56,12 @@ public:
     void commandNotice(std::vector<std::string> cmd,std::map<int,Client>::iterator client);
     void commandQuit(std::string buff,std::map<int,Client>::iterator client);
     void commandTopic( std::vector<std::string> cmd,std::map<int,Client>::iterator& client);
+    void executemode_channel(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client, std::vector<std::string> cmd);
+    int parse_nb_client(std::vector<std::string> cmd);
+    void modeLimit(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd);
+    void modeKey(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd);
+
+
 
     int getTypeError(void){return(_type_error);}
     std::string getPassword();
@@ -120,6 +125,21 @@ private:
         virtual const char *what() const throw();
     };
     class ERR_NONICKNAMEGIVEN : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_ISNOTOPERATOR: public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_CHANNELISFULL: public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_NOTENOUGHSPACEINCHANNEL: public std::exception
     {
     public:
         virtual const char *what() const throw();

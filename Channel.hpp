@@ -33,16 +33,20 @@ class Channel
 
         
         int getNbOperator();
+        int getNbClient();
         int getOperator();
         bool getTopic();
         std::string getTopicString();
         bool getInvite();
         int getLimitLen();
         bool getLimit();
+        bool getKey();
 
         void setName(std::string name);
         void setPassword(std::string password);
         void setMode();
+        void setKey(bool stat);
+        void setKeystring(std::string str);
         void setInvite(int type);
         void setLimitLen(int type);
         void setLimit(bool stat);
