@@ -98,7 +98,7 @@ const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
     return("[Error] :No nickname given\n");
 }
 
-const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
+const char* Server::ERR_ERRONEUSNICKNAME::what() const throw(){
     return("[Error] :Erroneus nickname\n");
 }
 
@@ -155,7 +155,7 @@ int    Server::compareName(std::string src, int type,std::map<int,Client>::itera
         {
             src+=" :Erroneus nickname";
             send(it->first,src.c_str(),src.size(),0);
-            throw ERR_ERRONEUSNICKNAME(JOIN);
+            throw ERR_ERRONEUSNICKNAME();
         }
     }
     for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
@@ -387,6 +387,8 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     {
         if(channel_exist[i] != 1)
         {
+            if(cmd.size() != 2)
+                throw ERR_NEEDMOREPARAMS(JOIN);
             send(client->first,message_creat.c_str(),message_creat.size(),0);
             this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));
             _vchannel[name_channel[i]].setMode();
@@ -835,7 +837,7 @@ void Server::commandUser(std::map<int,Client>::iterator& it, std::vector<std::st
     
     if(cmd.size() != 2)
         throw ERR_NONICKNAMEGIVEN();
-    if(compareName(cmd[1], 1))
+    if(compareName(cmd[1], 1, it))
     {
         send(it->first,parameters.c_str(),parameters.size(),0);
         throw ERR_NICKNAMEINUSE();
