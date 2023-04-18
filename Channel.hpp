@@ -11,6 +11,11 @@ typedef struct s_mode
 {
     bool i;
     bool t;
+    bool s;
+    bool n;
+    bool k;
+    bool l;
+    int limit;
     int o;
 }   t_mode;
 
@@ -34,11 +39,15 @@ class Channel
         bool getTopic();
         std::string getTopicString();
         bool getInvite();
+        int getLimitLen();
+        bool getLimit();
 
         void setName(std::string name);
         void setPassword(std::string password);
         void setMode();
         void setInvite(int type);
+        void setLimitLen(int type);
+        void setLimit(bool stat);
         void setTopic(bool stat);
         void setTopicMessage(std::string message);
 
@@ -58,6 +67,8 @@ class Channel
         std::string _topic;
         t_mode _mode;
         std::deque<int> _client_base;
+        std::deque<int> _client_black_list;
+        std::deque<int> _mode_white_list;
 };
 
 #endif
