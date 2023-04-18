@@ -110,6 +110,151 @@ void Server::setPassword(std::string input_password){
     password = input_password;
 }
 
+int Server::parse_nb_client(std::vector<std::string> cmd){
+    double tmp;
+    char *ptr;
+
+    tmp = strtod(cmd[3].c_str(),&ptr);
+
+    if(ptr[0] != '\0' || tmp > 1000 || tmp < 1)
+        throw ERR_NEEDMOREPARAMS(MODE);
+    return(std::atoi(cmd[3].c_str()));
+}
+
+void    modeInvite(std::string option, std::map<std::string,Channel>::iterator it_channel){
+    if(option[0] == 'i' && option.size() == 1)
+    {
+        if(it_channel->second.getInvite() == 1)
+            it_channel->second.setInvite(0);
+        else
+            it_channel->second.setInvite(1);
+    }
+    else if(option[1] == 'i' && option[0] == '+')
+        it_channel->second.setInvite(true);
+    else if(option[1] == 'i' && option[0] == '-')
+        it_channel->second.setInvite(false);
+}
+
+void    modeTopic(std::string option, std::map<std::string,Channel>::iterator it_channel){
+    if(option[0] == 't' && option.size() == 1)
+    {
+        if(it_channel->second.getTopic() == 1)
+            it_channel->second.setTopic(0);
+        else
+            it_channel->second.setTopic(1);
+    }
+    else if(option[1] == 't' && option[0] == '-')
+        it_channel->second.setTopic(false);
+    else if(option[1] == 't' && option[0] == '+')
+        it_channel->second.setTopic(true);
+}
+
+void    Server::modeKey(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd){
+    if(option[0] == 'k' && option.size() == 1)
+    {
+        if(it_channel->second.getKey() == 1)
+        {
+            if(cmd.size() != 3)
+                throw ERR_NEEDMOREPARAMS(MODE);
+            it_channel->second.setKey(0);
+        }
+        else
+        {
+            if(cmd.size() != 4 && cmd[3].size() != 0)
+                throw ERR_NEEDMOREPARAMS(MODE);
+            it_channel->second.setKey(1);
+            it_channel->second.setKeystring(cmd[3]);
+        }
+    }
+    else if(option[1] == 'k' && option[0] == '+')
+    {
+        if(cmd.size() != 4 && cmd[3].size() != 0)
+            throw ERR_NEEDMOREPARAMS(MODE);
+        it_channel->second.setKey(1);
+        it_channel->second.setKeystring(cmd[3]);
+    }
+    else if(option[1] == 'k' && option[0] == '-')
+        it_channel->second.setKey(0);
+}
+
+
+void    modeOperator(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client){
+    if(option[0] == 'o' && option.size() == 1)
+        it_channel->second.invertOperator(client->first);
+    else if(option[1] == 'o' && option[0] == '+')
+        it_channel->second.addOperator(client->first);
+    else if(option[1] == 'o' && option[0] == '-')
+        it_channel->second.removeOperator(client->first);
+}
+
+void    Server::modeLimit(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd){
+    if(option[0] == 'l' && option.size() == 1)
+    {
+        if(it_channel->second.getLimit() == 1)
+        {
+            if(cmd.size() != 3)
+                throw ERR_NEEDMOREPARAMS(MODE);
+            it_channel->second.setLimit(0);
+        }
+        else
+        {
+            if(cmd.size() != 4 && cmd[3].size() != 0)
+                throw ERR_NEEDMOREPARAMS(MODE);
+            if(it_channel->second.getNbClient() > parse_nb_client(cmd))
+                throw ERR_NOTENOUGHSPACEINCHANNEL();
+            it_channel->second.setLimit(1);
+            it_channel->second.setLimitLen(parse_nb_client(cmd));
+        }
+    }
+    else if(option[1] == 'l' && option[0] == '+')
+    {
+        if(cmd.size() != 4 && cmd[3].size() != 0)
+            throw ERR_NEEDMOREPARAMS(MODE);
+        if(it_channel->second.getNbClient() > parse_nb_client(cmd))
+            throw ERR_NOTENOUGHSPACEINCHANNEL();
+        it_channel->second.setLimit(1);
+        it_channel->second.setLimitLen(parse_nb_client(cmd));
+    }
+    else if(option[1] == 'l' && option[0] == '-')
+        it_channel->second.setLimit(0);
+}
+
+void Server::executemode_channel(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client, std::vector<std::string> cmd){
+    modeInvite(option,it_channel);
+    modeLimit(option,it_channel,cmd);
+    modeOperator(option,it_channel,client);
+    modeKey(option,it_channel,cmd);
+    modeTopic(option,it_channel);
+}
+
+std::vector<std::string> split(std::string str, char delimiter) {
+  std::vector<std::string> tokens;
+  size_t start = 0, end = 0;
+
+  while ((end = str.find(delimiter, start)) != std::string::npos) {
+    tokens.push_back(str.substr(start, end - start));
+    start = end + 1;
+  }
+
+  tokens.push_back(str.substr(start));
+  return tokens;
+}
+
+int Server::check_client_existence(std::vector<std::string> target){
+    size_t find = 0;
+    for(std::vector<std::string>::iterator it_target = target.begin(); it_target != target.end();it_target++)
+    {
+        for(std::map<int, Client>::iterator it_client = _server.begin(); it_client != _server.end();it_client++)
+        {
+            if(it_client->second.getNick_name().compare(*it_target) == 0)
+            find++;
+        }
+    }
+    if(find == target.size())
+        return(1);
+    return(0);
+}
+
 void    Server::parseComma(std::string buff, std::vector<std::string> &target){
     int i = 0;
 
@@ -245,14 +390,6 @@ void    Server::message_receiver(std::map<int,Client>::iterator it){
     }
 }
 
-void    Server::init_client_socket(int tmp_client_socket){
-    _server[tmp_client_socket].setStatus(0);
-    _server[tmp_client_socket].setNotification(0);
-    _server[tmp_client_socket].setInvisible(0);
-    _server[tmp_client_socket].setWallops(0);
-    _server[tmp_client_socket].setWallops(0);
-}
-
 void    Server::initServer(char **av)
 {
     //AF_INET = IPv4
@@ -310,8 +447,7 @@ void    Server::initServer(char **av)
             Client test;
             _server.insert(std::pair<int,Client>(tmp_client_socket,test));
             send(tmp_client_socket,"PASS <password>\n",16,0);
-            init_client_socket(tmp_client_socket);
-
+            _server[tmp_client_socket].setStatus(0);
         }
 
         //checker de changement au nv du socket_client
@@ -442,14 +578,15 @@ void Server::commandKick(std::vector<std::string> cmd,std::map<int,Client>::iter
 void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
     std::string message_to_client("Command PRIVMSG executed\n");
     std::vector<std::string> target;
-    std::string message;
 
-    if(cmd.size() != 3)
+    if(cmd.size() != 3 || cmd[2].size() == 0)
         throw ERR_NEEDMOREPARAMS(PRIVMSG);
 
     parseComma(cmd[1],target);
 
     cmd[2].append("\n");
+    if(!check_client_existence(target))
+        throw ERR_USERSDONTMATCH();
     for(int i = target.size() -1;i != -1; i--)
     {
         for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
@@ -459,129 +596,11 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
                 send(client->first,message_to_client.c_str(),message_to_client.size(),0);
                 send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
                 send(it->first," :",2,0);
-                send(it->first,message.c_str(),message.size(),0);
+                send(it->first,cmd[2].c_str(),cmd[2].size(),0);
             }
         }
     }
 }
-
-int Server::parse_nb_client(std::vector<std::string> cmd){
-    double tmp;
-    char *ptr;
-
-    tmp = strtod(cmd[3].c_str(),&ptr);
-
-    if(ptr[0] != '\0' || tmp > 1000 || tmp < 1)
-        throw ERR_NEEDMOREPARAMS(MODE);
-    return(std::atoi(cmd[3].c_str()));
-}
-
-void    modeInvite(std::string option, std::map<std::string,Channel>::iterator it_channel){
-    if(option[0] == 'i' && option.size() == 1)
-    {
-        if(it_channel->second.getInvite() == 1)
-            it_channel->second.setInvite(0);
-        else
-            it_channel->second.setInvite(1);
-    }
-    else if(option[1] == 'i' && option[0] == '+')
-        it_channel->second.setInvite(true);
-    else if(option[1] == 'i' && option[0] == '-')
-        it_channel->second.setInvite(false);
-}
-
-void    modeTopic(std::string option, std::map<std::string,Channel>::iterator it_channel){
-    if(option[0] == 't' && option.size() == 1)
-    {
-        if(it_channel->second.getTopic() == 1)
-            it_channel->second.setTopic(0);
-        else
-            it_channel->second.setTopic(1);
-    }
-    else if(option[1] == 't' && option[0] == '-')
-        it_channel->second.setTopic(false);
-    else if(option[1] == 't' && option[0] == '+')
-        it_channel->second.setTopic(true);
-}
-
-void    Server::modeKey(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd){
-    if(option[0] == 'k' && option.size() == 1)
-    {
-        if(it_channel->second.getKey() == 1)
-        {
-            if(cmd.size() != 3)
-                throw ERR_NEEDMOREPARAMS(MODE);
-            it_channel->second.setKey(0);
-        }
-        else
-        {
-            if(cmd.size() != 4 && cmd[3].size() != 0)
-                throw ERR_NEEDMOREPARAMS(MODE);
-            it_channel->second.setKey(1);
-            it_channel->second.setKeystring(cmd[3]);
-        }
-    }
-    else if(option[1] == 'k' && option[0] == '+')
-    {
-        if(cmd.size() != 4 && cmd[3].size() != 0)
-            throw ERR_NEEDMOREPARAMS(MODE);
-        it_channel->second.setKey(1);
-        it_channel->second.setKeystring(cmd[3]);
-    }
-    else if(option[1] == 'k' && option[0] == '-')
-        it_channel->second.setKey(0);
-}
-
-
-void    modeOperator(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client){
-    if(option[0] == 'o' && option.size() == 1)
-        it_channel->second.invertOperator(client->first);
-    else if(option[1] == 'o' && option[0] == '+')
-        it_channel->second.addOperator(client->first);
-    else if(option[1] == 'o' && option[0] == '-')
-        it_channel->second.removeOperator(client->first);
-}
-
-void    Server::modeLimit(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd){
-    if(option[0] == 'l' && option.size() == 1)
-    {
-        if(it_channel->second.getLimit() == 1)
-        {
-            if(cmd.size() != 3)
-                throw ERR_NEEDMOREPARAMS(MODE);
-            it_channel->second.setLimit(0);
-        }
-        else
-        {
-            if(cmd.size() != 4 && cmd[3].size() != 0)
-                throw ERR_NEEDMOREPARAMS(MODE);
-            if(it_channel->second.getNbClient() > parse_nb_client(cmd))
-                throw ERR_NOTENOUGHSPACEINCHANNEL();
-            it_channel->second.setLimit(1);
-            it_channel->second.setLimitLen(parse_nb_client(cmd));
-        }
-    }
-    else if(option[1] == 'l' && option[0] == '+')
-    {
-        if(cmd.size() != 4 && cmd[3].size() != 0)
-            throw ERR_NEEDMOREPARAMS(MODE);
-        if(it_channel->second.getNbClient() > parse_nb_client(cmd))
-            throw ERR_NOTENOUGHSPACEINCHANNEL();
-        it_channel->second.setLimit(1);
-        it_channel->second.setLimitLen(parse_nb_client(cmd));
-    }
-    else if(option[1] == 'l' && option[0] == '-')
-        it_channel->second.setLimit(0);
-}
-
-void Server::executemode_channel(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client, std::vector<std::string> cmd){
-    modeInvite(option,it_channel);
-    modeLimit(option,it_channel,cmd);
-    modeOperator(option,it_channel,client);
-    modeKey(option,it_channel,cmd);
-    modeTopic(option,it_channel);
-}
-
 
 void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
     std::string message_to_client("Command MODE executed\n");
@@ -597,7 +616,7 @@ void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iter
 
     it = _vchannel.find(cmd[1]);
 
-    if(it == _vchannel.end() && id == _server.end())
+    if(it == _vchannel.end())
         throw ERR_NOSUCHCHANNEL();
 
     if(!it->second.isOperator(client->first))
@@ -605,7 +624,11 @@ void Server::commandMode(std::vector<std::string> cmd,std::map<int,Client>::iter
     if(check_mode_option(cmd[2]))
         throw ERR_NEEDMOREPARAMS(MODE);
     if(cmd[2][0] == 'o' || cmd[2][1] == 'o')
+    {
+        if(cmd.size() != 4 || cmd[3].size() == 0)
+            throw ERR_NEEDMOREPARAMS(MODE);
         id = find_socket(cmd[3]);
+    }
     executemode_channel(cmd[2], it, id, cmd);
     send(client->first,message_to_client.c_str(),message_to_client.size(),0);
 }
@@ -718,19 +741,6 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client)
     _server.erase(client->first);
 }
 
-std::vector<std::string> split(std::string str, char delimiter) {
-  std::vector<std::string> tokens;
-  size_t start = 0, end = 0;
-
-  while ((end = str.find(delimiter, start)) != std::string::npos) {
-    tokens.push_back(str.substr(start, end - start));
-    start = end + 1;
-  }
-
-  tokens.push_back(str.substr(start));
-  return tokens;
-}
-
 void Server::sendFromClient(std::map<int,Client>::iterator client, std::string message)
 {
     for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
@@ -805,7 +815,6 @@ void Server::commandPass(std::map<int,Client>::iterator& it, std::vector<std::st
         send(it->first,parameters_nick.c_str(),parameters_nick.size(),0);
     }
 }
-
 
 void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::string> cmd){
     std::string outputstr("[2] [NICK NAME SET] : ");

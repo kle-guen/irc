@@ -42,30 +42,6 @@ public:
     std::string getUser_name(){
         return(user_name);
     }
-    
-    int getInvisible(){
-        return(_mode.i);
-    }
-
-    int getNotification(){
-        return(_mode.s);
-    }
-
-    int getWallops(){
-        return(_mode.w);
-    }
-
-    void setWallops(int n){
-        _mode.w = n;
-    }
-    
-    void setNotification(int n){
-        _mode.s = n;
-    }
-
-    void setInvisible(int n){
-        _mode.i = n;
-    }
 
     void setStatus(int n){
         status = n;

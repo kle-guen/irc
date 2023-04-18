@@ -40,7 +40,7 @@ public:
     int find_socket_channel(int id,std::deque<int> _vchannel);
     int compareName(std::string target,int type,std::map<int,Client>::iterator& it);
     void sendFromClient(std::map<int,Client>::iterator client, std::string message);
-    void init_client_socket(int tmp_client_socket);
+    int check_client_existence(std::vector<std::string> target);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it);
     void commandPass(std::map<int, Client>::iterator &it, std::vector<std::string> cmd);
