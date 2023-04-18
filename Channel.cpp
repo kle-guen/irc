@@ -83,6 +83,16 @@ std::string Channel::getTopicMessage(){
     return(this->_topic);
 }
 
+void Channel::setLimitLen(int size)
+{
+    this->_mode.limit = size;
+}
+
+void Channel::setLimit(bool stat)
+{
+    this->_mode.l = stat;
+}
+
 int Channel::isOperator(int id)
 {
     if (std::find(this->_client_base.begin(),this->_client_base.begin()+this->_mode.o,id) == this->_client_base.begin()+this->_mode.o)
@@ -209,6 +219,16 @@ std::string Channel::getPassword() const{
 
 std::string Channel::getTopicString(){
     return(_topic);
+}
+
+bool Channel::getLimit()
+{
+    return(this->_mode.l);
+}
+
+int Channel::getLimitLen()
+{
+    return(this->_mode.limit);
 }
 
 void Channel::addClient(int id)
