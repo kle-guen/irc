@@ -8,8 +8,8 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/nfs/homes/alprival/t/irc",
-            "args": ["1179","123"],
+            "program": "/nfs/homes/alprival/t_copy/ircserv",
+            "args": ["1291","123"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
@@ -30,7 +30,5 @@
             ]
         }
 
-    ]
-}
     ]
 }

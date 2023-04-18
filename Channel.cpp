@@ -64,7 +64,10 @@ void Channel::changeOperator(int old_operator,int new_operator)
 void Channel::setMode(){
     this->_mode.i = false;
     this->_mode.t = false;
+    this->_mode.l = false;
+    this->_mode.k = false;
     this->_mode.o = 1;
+    this->_mode.limit = 10000;
 }
 
 void Channel::setTopic(bool stat){
@@ -87,10 +90,23 @@ void Channel::setLimitLen(int size)
 {
     this->_mode.limit = size;
 }
+bool Channel::getKey(){
+    return(_mode.k);
+}
+
+void Channel::setKeystring(std::string str){
+    _password = str;
+}
 
 void Channel::setLimit(bool stat)
 {
     this->_mode.l = stat;
+}
+
+
+void Channel::setKey(bool stat)
+{
+    this->_mode.k = stat;
 }
 
 int Channel::isOperator(int id)
@@ -129,6 +145,10 @@ int Channel::getNbOperator()
     return(this->_mode.o);
 }
 
+int Channel::getNbClient()
+{
+    return(_client_base.size());
+}
 void Channel::addOperator(int new_operator)
 {
     if (std::find(this->_client_base.begin(),this->_client_base.end(),new_operator) == this->_client_base.end())
