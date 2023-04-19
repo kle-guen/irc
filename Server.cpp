@@ -736,8 +736,10 @@ void Server::commandInvite(std::vector<std::string> cmd,std::map<int,Client>::it
     if(it == _vchannel.end())
         throw ERR_NOSUCHCHANNEL();
 
-    if (client->first == it->second.getOperator())
+    if (client->first == it->second.getOperator() )
     {
+        if(it->second.getLimitLen() - 1 < it->second.getNbClient())
+            throw ERR_CHANNELISFULL();
         it->second.addClient(id->first);
         send(client->first,message_to_client.c_str(),message_to_client.size(),0);
     }
