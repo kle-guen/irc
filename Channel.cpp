@@ -197,9 +197,12 @@ void Channel::sendMessage(std::string name, int id, std::string message)
         return;
     while(it!= _client_base.end())
     {
-        send(*it,name.c_str(),name.size(),0);
-        send(*it," :",2,0);
-        send(*it,message.c_str(),message.size(),0);
+        if (*it != id)
+        {
+            send(*it,name.c_str(),name.size(),0);
+            send(*it," :",2,0);
+            send(*it,message.c_str(),message.size(),0);
+        }
         it++;
     }
 }

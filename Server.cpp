@@ -106,6 +106,13 @@ const char* Server::ERR_ERRONEUSNICKNAME::what() const throw(){
     return("[Error] :Erroneus nickname\n");
 }
 
+const char* Server::ERR_CANNOTSENDTOCHAN::what() const throw(){
+    std::string tmp;
+    tmp = this->_name;
+    tmp+=" :Cannot send to channel\n";
+    return(tmp.c_str());
+}
+
 std::string Server::getPassword(){
     return(password);
 }
@@ -245,18 +252,30 @@ std::vector<std::string> split(std::string str, char delimiter) {
   return tokens;
 }
 
-int Server::check_client_existence(std::vector<std::string> target){
-    size_t find = 0;
+int Server::check_client_existence(std::vector<std::string> target,int src){
     for(std::vector<std::string>::iterator it_target = target.begin(); it_target != target.end();it_target++)
     {
-        for(std::map<int, Client>::iterator it_client = _server.begin(); it_client != _server.end();it_client++)
+        if (it_target[0][0] != '#')
         {
-            if(it_client->second.getNick_name().compare(*it_target) == 0)
-            find++;
+            std::map<int, Client>::iterator it_client = this->_server.begin();
+            std::map<int, Client>::iterator it_client_end = this->_server.end();
+            while(it_client!= it_client_end && it_client->second.getNick_name().compare(*it_target)!=0)
+                it_client++;
+            if (it_client == it_client_end)
+                return(1);
+        }
+        else
+        {   
+            std::map<std::string, Channel>::iterator it_channel = this->_vchannel.begin();
+            std::map<std::string, Channel>::iterator it_channel_end = this->_vchannel.end();
+            while(it_channel!= it_channel_end && it_channel->first != *it_target)
+                it_channel++;
+            if (it_channel == it_channel_end)
+                throw ERR_CANNOTSENDTOCHAN(*it_target);
+            else if (!it_channel->second.find_client(src))
+                throw ERR_CANNOTSENDTOCHAN(*it_target);
         }
     }
-    if(find == target.size())
-        return(1);
     return(0);
 }
 
@@ -598,22 +617,25 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
 
     if(cmd.size() != 3 || cmd[2].size() == 0)
         throw ERR_NEEDMOREPARAMS(PRIVMSG);
-
     parseComma(cmd[1],target);
-
     cmd[2].append("\n");
-    if(!check_client_existence(target))
+    if(check_client_existence(target,client->first) == 1)
         throw ERR_USERSDONTMATCH();
     for(int i = target.size() -1;i != -1; i--)
     {
-        for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
+        if (target[i][0]=='#')
+            this->_vchannel[target[i]].sendMessage(client->second.getUser_name(),client->first,cmd[2]);
+        else
         {
-            if (it->second.getNick_name().compare(target[i]) == 0)
+            for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
             {
-                send(client->first,message_to_client.c_str(),message_to_client.size(),0);
-                send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
-                send(it->first," :",2,0);
-                send(it->first,cmd[2].c_str(),cmd[2].size(),0);
+                if (it->second.getNick_name().compare(target[i]) == 0)
+                {
+                    send(client->first,message_to_client.c_str(),message_to_client.size(),0);
+                    send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
+                    send(it->first," :",2,0);
+                    send(it->first,cmd[2].c_str(),cmd[2].size(),0);
+                }
             }
         }
     }

@@ -40,7 +40,7 @@ public:
     int find_socket_channel(int id,std::deque<int> _vchannel);
     int compareName(std::string target,int type,std::map<int,Client>::iterator& it);
     void sendFromClient(std::map<int,Client>::iterator client, std::string message);
-    int check_client_existence(std::vector<std::string> target);
+    int check_client_existence(std::vector<std::string> target,int src);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it);
     void commandPass(std::map<int, Client>::iterator &it, std::vector<std::string> cmd);
@@ -76,6 +76,14 @@ private:
     std::string password;
     std::vector<std::string> uper_client;
     
+    class ERR_CANNOTSENDTOCHAN : public std::exception
+    {
+    public:
+        std::string _name;
+        ERR_CANNOTSENDTOCHAN(std::string name): _name(name) {}
+        virtual const char *what() const throw();
+        virtual ~ERR_CANNOTSENDTOCHAN()throw(){};
+    };
     class ERR_NEEDMOREPARAMS : public std::exception
     {
     public:
