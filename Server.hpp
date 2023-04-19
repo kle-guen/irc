@@ -27,8 +27,6 @@ class Server
 {
 public:
     Server();
-    Server(Server const &src);
-    Server &operator=(Server const &rhs);
     ~Server();
 
     void initServer(char **av);
@@ -38,14 +36,16 @@ public:
     void parseComma(std::string buff, std::vector<std::string> &target);
     void executemode_user(std::string option, std::map<std::string,Channel>::iterator it, std::map<int,Client>::iterator client);
     int find_socket_channel(int id,std::deque<int> _vchannel);
-    int compareName(std::string target,int type,std::map<int,Client>::iterator& it);
+    int compareName(std::string target,int type);
+    int  compareNameChannel(std::string src);
+    
     void sendFromClient(std::map<int,Client>::iterator client, std::string message);
     int check_client_existence(std::vector<std::string> target,int src);
 
     void choose_cmd(std::string buff, std::map<int, Client>::iterator it);
-    void commandPass(std::map<int, Client>::iterator &it, std::vector<std::string> cmd);
-    void commandNick(std::map<int, Client>::iterator &it, std::vector<std::string> cmd);
-    void commandUser(std::map<int, Client>::iterator &it, std::vector<std::string> cmd);
+    void commandPass(std::map<int, Client>::iterator &it, std::vector<std::string> cmd, int status);
+    void commandNick(std::map<int, Client>::iterator &it, std::vector<std::string> cmd, int status);
+    void commandUser(std::map<int, Client>::iterator &it, std::vector<std::string> cmd, int status);
     void commandJoin(std::vector<std::string> cmd, std::map<int, Client>::iterator it);
     void commandSend(std::vector<std::string> cmd, std::map<int, Client>::iterator it);
     void commandPrivMsg(std::vector<std::string> cmd, std::map<int, Client>::iterator it);
@@ -54,7 +54,7 @@ public:
     void commandInvite(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandPart(std::vector<std::string> cmd, std::map<int, Client>::iterator client);
     void commandNotice(std::vector<std::string> cmd,std::map<int,Client>::iterator client);
-    void commandQuit(std::string buff,std::map<int,Client>::iterator client);
+    void commandQuit(std::string buff,std::map<int,Client>::iterator client, int type);
     void commandTopic( std::vector<std::string> cmd,std::map<int,Client>::iterator& client);
     void executemode_channel(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client, std::vector<std::string> cmd);
     int parse_nb_client(std::vector<std::string> cmd);
@@ -138,6 +138,32 @@ private:
         virtual const char *what() const throw();
     };
     class ERR_ERRONEUSNICKNAME : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    
+    class ERR_USERNAMEINUSE : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_NOUSERNAMEGIVEN : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_ERRONEUSUSERNAME : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_ERRONEUSCHANNEL : public std::exception
+    {
+    public:
+        virtual const char *what() const throw();
+    };
+    class ERR_ALREADYREGISTRED : public std::exception
     {
     public:
         virtual const char *what() const throw();

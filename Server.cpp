@@ -1,33 +1,16 @@
 #include "Server.hpp"
 
-Server::Server()
-{
+Server::Server(){}
 
-}
-
-Server::Server(Server const & src)
-{
-    *this = src;
-}
-
-Server &Server::operator=(Server const & rhs)
-{
-    (void)rhs;
-    return (*this);
-}
-
-Server::~Server()
-{
-
-}
+Server::~Server(){}
 
 const char* Server::ERR_NEEDMOREPARAMS::what() const throw(){
     if(error_code == PASS)
         return("[Error] :PASS <password>\n");
     else if(error_code == NICK)
-        return("[Error] :NICK <password>\n");
+        return("[Error] :NICK <nickname>\n");
     else if(error_code == USER)
-        return("[Error] :USER <password>\n");
+        return("[Error] :USER <username>\n");
     else if(error_code == PRIVMSG)
         return("[Error] :PRIVMSG <receiver> <text to be sent>\n");
     else if(error_code == JOIN)
@@ -104,6 +87,26 @@ const char* Server::ERR_NONICKNAMEGIVEN::what() const throw(){
 
 const char* Server::ERR_ERRONEUSNICKNAME::what() const throw(){
     return("[Error] :Erroneus nickname\n");
+}
+
+const char* Server::ERR_USERNAMEINUSE::what() const throw(){
+    return("[Error] :Username is already in use\n");
+}
+
+const char* Server::ERR_NOUSERNAMEGIVEN::what() const throw(){
+    return("[Error] :No username given\n");
+}
+
+const char* Server::ERR_ERRONEUSUSERNAME::what() const throw(){
+    return("[Error] :Erroneus username\n");
+}
+
+const char* Server::ERR_ALREADYREGISTRED::what() const throw(){
+    return("[Error] :You may not reregister\n");
+}
+
+const char* Server::ERR_ERRONEUSCHANNEL::what() const throw(){
+    return("[Error] :Erroneus channel\n");
 }
 
 const char* Server::ERR_CANNOTSENDTOCHAN::what() const throw(){
@@ -304,7 +307,7 @@ void    Server::parseComma(std::string buff, std::vector<std::string> &target){
         target.push_back(buff.substr(0,buff.find(' ')));
 }
 
-int    Server::compareName(std::string src, int type,std::map<int,Client>::iterator& it){
+int    Server::compareName(std::string src, int type){
     std::string target;
     std::transform(src.begin(),src.end(),src.begin(),::tolower);
     for (unsigned long i=0; i< src.size();i++)
@@ -321,10 +324,11 @@ int    Server::compareName(std::string src, int type,std::map<int,Client>::itera
     for (unsigned long i=0; i<src.size();i++)
     {
         if (src[i]!='`' && src[i]!='^' && src[i]!='-' && src[i]!='\\' && src[i]!='[' && src[i]!='[' && !isalpha(src[i]) && !isdigit(src[i]))
-        {
-            src+=" :Erroneus nickname";
-            send(it->first,src.c_str(),src.size(),0);
-            throw ERR_ERRONEUSNICKNAME();
+        {    
+            if (type)
+                throw ERR_ERRONEUSUSERNAME();
+            else
+                throw ERR_ERRONEUSNICKNAME();
         }
     }
     for(std::map<int, Client>::iterator it = _server.begin();it != _server.end();it++)
@@ -345,9 +349,22 @@ int    Server::compareName(std::string src, int type,std::map<int,Client>::itera
             else if (target[i]=='}')
                 target[i]=']';
         }
-        std::cerr << target << std::endl;
         if(src.compare(target) == 0)
             return(1);
+    }
+    return(0);
+}
+
+int    Server::compareNameChannel(std::string src){
+    std::string target;
+    std::transform(src.begin(),src.end(),src.begin(),::tolower);
+    
+    if (src[0] != '#')
+        throw ERR_ERRONEUSCHANNEL();
+    for (unsigned long i=1; i<src.size();i++)
+    {
+        if (src[i]!='-' && src[i]!='#' && src[i]!='&' && src[i]!='+' && src[i]!='!' && src[i]!='.' && !isalpha(src[i]) && !isdigit(src[i]))
+            throw ERR_ERRONEUSCHANNEL();
     }
     return(0);
 }
@@ -396,7 +413,7 @@ void    Server::message_receiver(std::map<int,Client>::iterator it){
     it->second.appendCommand(buffer);
     if (buffer.empty())
     {
-        commandQuit(buffer, it);
+        commandQuit(buffer, it, 0);
         return ;
     }
     while(it->second.getCommand().find_first_of('\n') != (size_t)-1)
@@ -504,8 +521,7 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     if(cmd.size() == 3)
         parseComma(cmd[2],password);
     for(size_t i = 0; i < name_channel.size();i++)
-        if(name_channel[i][0] != '#')
-            throw ERR_NEEDMOREPARAMS(JOIN);
+        compareNameChannel(name_channel[i]);
 
     for(size_t i = 0; i < name_channel.size();i++)
     {
@@ -615,16 +631,21 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
     std::string message_to_client("Command PRIVMSG executed\n");
     std::vector<std::string> target;
 
-    if(cmd.size() != 3 || cmd[2].size() == 0)
+    if(cmd.size() < 2 || cmd[2].size() == 0)
         throw ERR_NEEDMOREPARAMS(PRIVMSG);
     parseComma(cmd[1],target);
-    cmd[2].append("\n");
+    cmd[cmd.size()-1].append("\n");
     if(check_client_existence(target,client->first) == 1)
         throw ERR_USERSDONTMATCH();
     for(int i = target.size() -1;i != -1; i--)
     {
         if (target[i][0]=='#')
-            this->_vchannel[target[i]].sendMessage(client->second.getUser_name(),client->first,cmd[2]);
+        {
+            for(size_t j = 2; j < cmd.size();j++ )
+            {
+                this->_vchannel[target[i]].sendMessage(client->second.getUser_name(),client->first,cmd[j]);
+            }
+        }   
         else
         {
             for(std::map<int,Client> ::iterator it = _server.begin(); it != _server.end();it++)
@@ -634,7 +655,10 @@ void Server::commandPrivMsg(std::vector<std::string> cmd,std::map<int,Client>::i
                     send(client->first,message_to_client.c_str(),message_to_client.size(),0);
                     send(it->first,client->second.getNick_name().c_str(),client->second.getNick_name().size(),0);
                     send(it->first," :",2,0);
-                    send(it->first,cmd[2].c_str(),cmd[2].size(),0);
+                    for(size_t j = 2; j < cmd.size();j++ )
+                    {
+                        send(it->first,cmd[j].c_str(),cmd[j].size(),0);
+                    }
                 }
             }
         }
@@ -743,7 +767,7 @@ void Server::commandNotice(std::vector<std::string> cmd,std::map<int,Client>::it
     }
 }
 
-void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client){
+void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client, int type){
     std::string message_to_client("Command QUIT executed\n");
     std::map<std::string,Channel>::iterator it_c;
     std::string out;
@@ -763,14 +787,14 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client)
                 ++it_c;
         }
         else
-        ++it_c;
+            ++it_c;
     }
-    if (buff.size() == 4)
+    if (buff.size() == 4 && type)
     {
         out.append(client->second.getNick_name() + " left\n");
         sendFromClient(client, out);
     }
-    else
+    else if (type)
     {
         out = buff.substr(buff.find(' ') + 1, buff.size());
         out.append("\n");
@@ -799,32 +823,38 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client)
     try
     {
         int status = client->second.getStatus();
-        if (status == 0 && buff.compare(0,5,"PASS ") == 0)
-            commandPass(client , cmd);
-        else if (status == 1 && buff.compare(0,5,"NICK ") == 0)
-            commandNick(client , cmd); 
-        else if (status == 2 && buff.compare(0,5,"USER ") == 0)
-            commandUser(client , cmd);
-        else if (buff.compare(0,5,"JOIN ") == 0)
+        if (buff.compare(0,4,"PASS") == 0)
+            commandPass(client , cmd, status);
+        else if ((status != 0 && status != 2) && buff.compare(0,4,"NICK") == 0)
+            commandNick(client , cmd, status);
+        else if ((status != 0 && status != 1) && buff.compare(0,4,"USER") == 0)
+            commandUser(client , cmd, status);
+        else if (status == 3 && buff.compare(0,4,"JOIN") == 0)
             commandJoin(cmd,client);
-        else if (buff.compare(0,5,"KICK ") == 0)
+        else if (status == 3 && buff.compare(0,4,"KICK") == 0)
             commandKick(cmd,client);
-        else if (buff.compare(0,5,"PART ") == 0)
+        else if (status == 3 && buff.compare(0,4,"PART") == 0)
             commandPart(cmd,client);
-        else if (buff.compare(0,8,"PRIVMSG ") == 0)
+        else if (status == 3 && buff.compare(0,7,"PRIVMSG") == 0)
             commandPrivMsg(cmd,client);
-        else if (buff.compare(0,5,"MODE ") == 0)
+        else if (status == 3 && buff.compare(0,4,"MODE") == 0)
             commandMode(cmd,client);
-        else if (buff.compare(0,7,"INVITE ") == 0)
+        else if (status == 3 && buff.compare(0,6,"INVITE") == 0)
             commandInvite(cmd,client);
-        else if (buff.compare(0,6,"TOPIC ") == 0)
+        else if (status == 3 && buff.compare(0,5,"TOPIC") == 0)
             commandTopic(cmd,client);
-        else if (buff.compare(0,7,"NOTICE ") == 0)
+        else if (status == 3 && buff.compare(0,6,"NOTICE") == 0)
             commandNotice(cmd,client);
-        else if (buff.size() > 5 && buff.substr(0,5).compare("QUIT ") == 0)
-            commandQuit(buff,client);
-        else if (buff.size() == 4 && buff.compare("QUIT") == 0)
-            commandQuit(buff,client);
+        else if (status == 3 && buff.size() > 4 && buff.substr(0,5).compare("QUIT") == 0)
+            commandQuit(buff,client, 1);
+        else if (status == 3 && buff.size() == 4 && buff.compare("QUIT") == 0)
+            commandQuit(buff,client, 1);
+        else if (status == 0)
+            throw ERR_NEEDMOREPARAMS(PASS);
+        else if (status == 1)
+            throw ERR_NEEDMOREPARAMS(NICK);
+        else if (status == 2)
+            throw ERR_NEEDMOREPARAMS(USER); 
         else
             throw CommandDoesntExist();
     }
@@ -836,18 +866,16 @@ void Server::choose_cmd(std::string buff,std::map<int,Client>::iterator client)
     
 }
 
-void Server::commandPass(std::map<int,Client>::iterator& it, std::vector<std::string> cmd){
+void Server::commandPass(std::map<int,Client>::iterator& it, std::vector<std::string> cmd, int status){
     std::string outputstr("[1] [PASS CORRECT]\n\n");
-    std::string parameters("PASS <password>\n");
-    std::string parameters_nick("NICK <username>\n");
+    std::string parameters_nick("NICK <nickname>\n");
 
+    if (status != 0)
+        throw ERR_ALREADYREGISTRED();
     if(cmd.size() != 2)
         throw ERR_NEEDMOREPARAMS(PASS);
     if (this->password.compare(cmd[1]) != 0)
-    {
-        send(it->first, parameters.c_str() ,parameters.size(),0);
         throw ERR_PASSWDMISMATCH();
-    }
     else
     {
         it->second.setStatus(1);
@@ -856,41 +884,49 @@ void Server::commandPass(std::map<int,Client>::iterator& it, std::vector<std::st
     }
 }
 
-void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::string> cmd){
-    std::string outputstr("[2] [NICK NAME SET] : ");
-    std::string parameters("NICK <nickname>\n");
+void Server::commandNick(std::map<int,Client>::iterator& it, std::vector<std::string> cmd, int status){
+    std::string outputstr1("[2] [NICK NAME SET] : ");
+    std::string outputstr2("Nickname changed to : ");
     std::string parameters_user("USER <username>\n");
 
     if(cmd.size() != 2)
         throw ERR_NEEDMOREPARAMS(NICK);
-    if(cmd[2].size() == 0)
+    if(cmd[1].size() == 0)
         throw ERR_NONICKNAMEGIVEN();
-    if(cmd[2].size() <= 10)
-        std::cerr<<"ERROR SIZE"<<std::endl;/*return error*/
-    if(compareName(cmd[1], 0,it))
-    {
-        send(it->first,parameters.c_str(),parameters.size(),0);
+    if(cmd[1].size() > 9)
+        throw ERR_ERRONEUSNICKNAME();
+    if(compareName(cmd[1], 0))
         throw ERR_NICKNAMEINUSE();
-    }
     it->second.setNickName(cmd[1]);
-    it->second.setStatus(2);
-    outputstr.append(it->second.getNick_name());
-    outputstr.append("\n\n");
-    send(it->first, outputstr.c_str() ,outputstr.size(),0);
-    send(it->first,parameters_user.c_str(),parameters_user.size(),0);
+    if (status == 1)
+    {
+        it->second.setStatus(2);
+        outputstr1.append(it->second.getNick_name());
+        outputstr1.append("\n\n");
+        send(it->first, outputstr1.c_str() ,outputstr1.size(),0);
+        send(it->first,parameters_user.c_str(),parameters_user.size(),0);
+    }
+    else
+    {
+        outputstr2.append(it->second.getNick_name());
+        outputstr2.append("\n");
+        send(it->first, outputstr2.c_str() ,outputstr2.size(),0);
+    }
 }
 
-void Server::commandUser(std::map<int,Client>::iterator& it, std::vector<std::string> cmd){
+void Server::commandUser(std::map<int,Client>::iterator& it, std::vector<std::string> cmd, int status){
     std::string outputstr("[3] [USER NAME SET] : ");
-    std::string parameters("USER <username>\n");
-    
+
+    if (status == 3)
+        throw ERR_ALREADYREGISTRED();
     if(cmd.size() < 2)
-        throw ERR_NONICKNAMEGIVEN();
-    if(compareName(cmd[1], 1, it))
-    {
-        send(it->first,parameters.c_str(),parameters.size(),0);
-        throw ERR_NICKNAMEINUSE();
-    }
+        throw ERR_NEEDMOREPARAMS(NICK);
+    if(cmd[1].size() == 0)
+        throw ERR_NOUSERNAMEGIVEN();
+    if(cmd[1].size() > 9)
+        throw ERR_ERRONEUSUSERNAME();
+    if(compareName(cmd[1], 1))
+        throw ERR_USERNAMEINUSE();
     it->second.setUserName(cmd[1]);
     it->second.setStatus(3);
     outputstr.append(it->second.getUser_name());
