@@ -31,17 +31,17 @@ const char* Server::ERR_NEEDMOREPARAMS::what() const throw(){
     else if(error_code == PRIVMSG)
         return("[Error] :PRIVMSG <receiver> <text to be sent>\n");
     else if(error_code == JOIN)
-        return("[Error] :JOIN <channel> <password>\n");
+        return("[Error] :JOIN <channel>{,<channel>} [<key>{,<key>}]\n");
     else if(error_code == MODE)
-        return("[Error] :MODE <channel> {[+|-]|o|i} [<user>]\n");
+        return("[Error] :MODE <channel> {[+|-]|o|i|t|l|k} [<limit>] [<user>]\n");
     else if(error_code == KICK)
-        return("[Error] :KICK: <pseudonyme> <canal> \n");
+        return("[Error] :KICK: <channel> <user> [<comment>]\n");
     else if(error_code == PART)
-        return("[Error] :PART: <channel> \n");
+        return("[Error] :PART: <channel>{,<channel>}\n");
     else if(error_code == INVITE)
         return("[Error] :INVITE: <nickname> <channel>\n");
     else if(error_code == TOPIC)
-        return("[Error] :INVITE: <channel> [<topic>]\n");
+        return("[Error] :TOPIC: <channel> [<topic>]\n");
     else if(error_code == NOTICE)
         return("[Error] :NOTICE: <nickname> <channel>\n");
     else if(error_code == QUIT)
@@ -72,6 +72,10 @@ const char* Server::CommandDoesntExist::what() const throw(){
 
 const char* Server::ERR_NOSUCHCHANNEL::what() const throw(){
     return("[Error] :No such channel\n");
+}
+
+const char* Server::RPL_NOTOPIC::what() const throw(){
+    return("[Error] :No topic is set\n");
 }
 
 const char* Server::ERR_BADCHANNELKEY::what() const throw(){
@@ -177,9 +181,10 @@ void    Server::modeKey(std::string option, std::map<std::string,Channel>::itera
         it_channel->second.setKey(0);
 }
 
-
-void    modeOperator(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client){
-    if(option[0] == 'o' && option.size() == 1)
+void    Server::modeOperator(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client){
+    if((option[0] == 'o' || option[1] == 'o') && it_channel->second.getLimitLen() - 1 < it_channel->second.getNbClient())
+        throw ERR_NOTENOUGHSPACEINCHANNEL();
+    if(option[0] == 'o' && option.size() == 1 )
         it_channel->second.invertOperator(client->first);
     else if(option[1] == 'o' && option[0] == '+')
         it_channel->second.addOperator(client->first);
@@ -478,11 +483,7 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
 
     parseComma(cmd[1],name_channel);
     if(cmd.size() == 3)
-    {
         parseComma(cmd[2],password);
-        if(password.size() != name_channel.size())
-            throw ERR_NEEDMOREPARAMS(JOIN);
-    }
     for(size_t i = 0; i < name_channel.size();i++)
         if(name_channel[i][0] != '#')
             throw ERR_NEEDMOREPARAMS(JOIN);
@@ -502,9 +503,14 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
                     send(client->first,message_add.c_str(),message_add.size(),0);
                     it->second.addClient(client->first);
                     if(it->second.getTopic() == 1)
-                        send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+                    {
+                        if(it->second.getTopicMessage().size() != 0)
+                            send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+                        else
+                            throw RPL_NOTOPIC();
+                    }
                 }
-                else if(password[i].compare(it->second.getPassword()) == 0)
+                else if(cmd.size() != 3 && cmd[2].size() != 0 && password[i].compare(it->second.getPassword()) == 0)
                 {
                     send(client->first,message_add.c_str(),message_add.size(),0);
                     it->second.addClient(client->first);
@@ -523,7 +529,7 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
     {
         if(channel_exist[i] != 1)
         {
-            if(cmd.size() != 2)
+            if(cmd.size() != 2 && cmd[1].size() != 0)
                 throw ERR_NEEDMOREPARAMS(JOIN);
             send(client->first,message_creat.c_str(),message_creat.size(),0);
             this->_vchannel.insert(std::pair<std::string,Channel>(name_channel[i],instance_channel));
@@ -536,6 +542,7 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
 void Server::commandTopic( std::vector<std::string> cmd,std::map<int,Client>::iterator& client){
     std::map<std::string,Channel>::iterator it;
     std::string message_to_client("Command TOPIC executed\n");
+    std::string message_to_no_text("[Error] :Write Topic\n");
     if(cmd.size() != 3 && cmd.size() != 2)
         throw ERR_NEEDMOREPARAMS(TOPIC);
     
@@ -544,19 +551,26 @@ void Server::commandTopic( std::vector<std::string> cmd,std::map<int,Client>::it
         throw ERR_NOSUCHCHANNEL();
     if(it->second.isOperator(client->first) && cmd.size() == 3 && it->second.getTopic() == 1)
     {
+        if(cmd[3].size() != 0)
+            throw RPL_NOTOPIC();
         cmd[2].append("\n");
         it->second.setTopicMessage(cmd[2]);
         send(client->first,message_to_client.c_str(),message_to_client.size(),0);
     }
     else if(cmd.size() == 2)
-        send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+    {
+        if(it->second.getTopicMessage().size() != 0)
+            send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+        else
+            throw RPL_NOTOPIC();
+    }
 }
 
 void Server::commandKick(std::vector<std::string> cmd,std::map<int,Client>::iterator client){
     std::string message_to_client("Command KICK executed\n");
     std::map<std::string,Channel>::iterator it;
 
-    if(cmd.size() != 4)
+    if(cmd.size() != 4 && cmd.size() != 3)
     throw ERR_NEEDMOREPARAMS(KICK);
     
     it = _vchannel.find(cmd[1]);
@@ -566,12 +580,15 @@ void Server::commandKick(std::vector<std::string> cmd,std::map<int,Client>::iter
     if (it->second.find_client(find_socket(cmd[2])->first) == 0)
         throw ERR_NOTONCHANNEL();
 
-    cmd[3].append("\n");
     if(it->second.isOperator(client->first) == 1)
     {
         send(client->first,message_to_client.c_str(),message_to_client.size(),0);
         it->second.removeClient(find_socket(cmd[2])->first);
-        send(find_socket(cmd[2])->first,cmd[3].c_str(),cmd[3].size(),0);
+        if(cmd.size() == 4)
+        {
+            cmd[3].append("\n");
+            send(find_socket(cmd[2])->first,cmd[3].c_str(),cmd[3].size(),0);
+        }
     }
 }
 
@@ -637,10 +654,9 @@ void Server::commandPart(std::vector<std::string> cmd,std::map<int,Client>::iter
     std::string message_to_client("Command PART executed\n");
 
     std::map<std::string,Channel>::iterator it;
-    // std::string name_channel;
     std::vector<std::string> name_channel;
 
-    if(cmd.size() != 3)
+    if(cmd.size() != 2)
         throw ERR_NEEDMOREPARAMS(PART);
 
     parseComma(cmd[1],name_channel);
@@ -724,6 +740,8 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client)
             else
                 ++it_c;
         }
+        else
+        ++it_c;
     }
     if (buff.size() == 4)
     {
@@ -844,7 +862,7 @@ void Server::commandUser(std::map<int,Client>::iterator& it, std::vector<std::st
     std::string outputstr("[3] [USER NAME SET] : ");
     std::string parameters("USER <username>\n");
     
-    if(cmd.size() != 2)
+    if(cmd.size() < 2)
         throw ERR_NONICKNAMEGIVEN();
     if(compareName(cmd[1], 1, it))
     {
