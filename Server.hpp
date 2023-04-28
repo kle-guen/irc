@@ -63,6 +63,7 @@ public:
     void modeLimit(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd);
     void modeKey(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd);
     void modeOperator(std::string option, std::map<std::string,Channel>::iterator it_channel, std::map<int,Client>::iterator client);
+    void modeTopic(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd);
 
 
     int getTypeError(void){return(_type_error);}

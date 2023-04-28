@@ -156,13 +156,18 @@ void    modeInvite(std::string option, std::map<std::string,Channel>::iterator i
         it_channel->second.setInvite(false);
 }
 
-void    modeTopic(std::string option, std::map<std::string,Channel>::iterator it_channel){
+void    Server::modeTopic(std::string option, std::map<std::string,Channel>::iterator it_channel, std::vector<std::string> cmd){
+
+    if(cmd.size() != 3)
+        throw ERR_NEEDMOREPARAMS(MODE);
     if(option[0] == 't' && option.size() == 1)
     {
         if(it_channel->second.getTopic() == 1)
             it_channel->second.setTopic(0);
         else
+        {
             it_channel->second.setTopic(1);
+        }
     }
     else if(option[1] == 't' && option[0] == '-')
         it_channel->second.setTopic(false);
@@ -246,7 +251,7 @@ void Server::executemode_channel(std::string option, std::map<std::string,Channe
     modeLimit(option,it_channel,cmd);
     modeOperator(option,it_channel,client);
     modeKey(option,it_channel,cmd);
-    modeTopic(option,it_channel);
+    modeTopic(option,it_channel,cmd);
 }
 
 std::vector<std::string> split(std::string str, char delimiter) {
@@ -571,7 +576,10 @@ void Server::commandJoin(std::vector<std::string> cmd,std::map<int,Client>::iter
                     if(it->second.getTopic() == 1)
                     {
                         if(it->second.getTopicMessage().size() != 0)
+                        {
                             send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+                            send(client->first,"\n",1,0);
+                        }
                         else
                             throw RPL_NOTOPIC(it->first);
                     }
@@ -613,23 +621,34 @@ void Server::commandTopic( std::vector<std::string> cmd,std::map<int,Client>::it
     std::map<std::string,Channel>::iterator it;
     std::string message_to_client("Command TOPIC executed\n");
     std::string message_to_no_text("[Error] :Write Topic\n");
-    if(cmd.size() != 3 && cmd.size() != 2)
+    std::string message;
+
+    if(cmd.size() < 2)
         throw ERR_NEEDMOREPARAMS(TOPIC);
     
     it = _vchannel.find(cmd[1]);
     if(it == _vchannel.end())
         throw ERR_NOSUCHCHANNEL(cmd[1]);
-    if(it->second.isOperator(client->first) && cmd.size() == 3 && it->second.getTopic() == 1)
+    if(it->second.isOperator(client->first) && cmd.size() > 2 && it->second.getTopic() == 1)
     {
-        if(cmd[3].size() == 0)
+        if(cmd[2].size() == 0)
             throw RPL_NOTOPIC(it->first);
-        it->second.setTopicMessage(cmd[2]);
+        for(size_t i = 2;i < cmd.size();i++)
+        {
+            message.append(cmd[i]);
+            if(i + 1 < cmd.size())
+                message.append(" ");
+        }
+        it->second.setTopicMessage(message);
         send(client->first,message_to_client.c_str(),message_to_client.size(),0);
     }
     else if(cmd.size() == 2)
     {
         if(it->second.getTopicMessage().size() != 0)
+        {
             send(client->first,it->second.getTopicString().c_str(),it->second.getTopicString().size(),0);
+            send(client->first,"\n",1,0);
+        }
         else
             throw RPL_NOTOPIC(it->first);
     }
@@ -888,10 +907,17 @@ void Server::commandQuit(std::string buff,std::map<int,Client>::iterator client,
 void Server::commandPrint(std::map<int,Client>::iterator client){
     std::map<int, Client> tmp = _server;
     char buffer[2048];
+    std::string client_names = "Client name in the server: ";
+    send(client->first,client_names.c_str(),client_names.size(),0);
+    for(std::map<int, Client>::iterator it_server = _server.begin();it_server != _server.end();++it_server)
+    {
+        std::string outclient_names = it_server->second.getNick_name() + " ";
+        send(client->first,outclient_names.c_str(),outclient_names.size(),0);
+    }
+    send(client->first,"\n",1,0);
     for(std::map<std::string, Channel>::iterator it =_vchannel.begin() ; it != _vchannel.end();++it)
     {
         std::string channel_name = "Channel name: " + it->first;
-        std::string client_names = "Client name in the server: ";
         std::string mode_t = " t: ";
         std::sprintf(buffer, "%d", it->second.getTopic());
         mode_t.append(buffer);
@@ -911,12 +937,6 @@ void Server::commandPrint(std::map<int,Client>::iterator client){
         std::sprintf(buffer, "%d", it->second.getNbOperator());
         mode_Nboperator.append(buffer);
 
-        send(client->first,client_names.c_str(),client_names.size(),0);
-        for(std::map<int, Client>::iterator it_server = _server.begin();it_server != _server.end();++it_server)
-        {
-            std::string outclient_names = it_server->second.getNick_name() + " ";
-            send(client->first,outclient_names.c_str(),outclient_names.size(),0);
-        }
 
         send(client->first,"\n",1,0);
         std::deque<int> tmp_channel = it->second.getClientBase();
@@ -925,7 +945,7 @@ void Server::commandPrint(std::map<int,Client>::iterator client){
 
         if (it->second.getTopic() == 1)
         {
-            send(client->first,mode_Topic.c_str() ,mode_Topic.size(),0);
+            send(client->first,mode_Topic.c_str() ,mode_Topic.size() - 1,0);
         }
         else
             send(client->first,mode_NoTopic.c_str() ,mode_NoTopic.size(),0);
