@@ -260,12 +260,7 @@ void Channel::addClient(int id)
     while(it!= _client_base.end())
     {
         if (id == *it)
-        {
-            send(id,"Already Inside :",16,0);
-            send(id,this->_name.c_str(),this->_name.size(),0);
-            send(id,"\n",1,0);
             return;
-        }
         it++;
     }
     this->_client_base.push_back(id);

@@ -1,0 +1,71 @@
+#!/bin/bash
+
+PORT=${1:-6667}
+PASS=${2:-1234}
+NICK=${3:-Nickname}
+USER=${4:-Username}
+
+CHANNEL1=${5:-#TEST}
+PASSWORD1=${5:-123}
+
+JOIN_1=${5:-JOIN ${CHANNEL1}"\n"}
+#JOIN_2=${5:-JOIN ${CHANNEL2}"\n"}
+#JOIN=${5:-${JOIN_1}${JOIN_2}${JOIN_2}}
+
+MODE_K_1=${5:-MODE ${CHANNEL1} +k ${PASSWORD1}"\n"}
+MODE_K_2=${5:-MODE ${CHANNEL1} +k"\n"}
+MODE_K_3=${5:-MODE ${CHANNEL1} k"\n"}
+MODE_K_4=${5:-MODE ${CHANNEL1} k"\n"}
+MODE_K_5=${5:-MODE ${CHANNEL1} -k"\n"}
+MODE_K_6=${5:-MODE ${CHANNEL1} -k dwadw"\n"}
+MODE_K=${5:-${MODE_K_1}${MODE_K_2}${MODE_K_3}${MODE_K_4}${MODE_K_5}${MODE_K_6}}
+
+MODE_L_1=${5:-MODE ${CHANNEL1} +l ${PASSWORD1}"\n"}
+MODE_L_2=${5:-MODE ${CHANNEL1} +l"\n"}
+MODE_L_3=${5:-MODE ${CHANNEL1} l"\n"}
+MODE_L_4=${5:-MODE ${CHANNEL1} l"\n"}
+MODE_L_5=${5:-MODE ${CHANNEL1} -l"\n"}
+MODE_L_6=${5:-MODE ${CHANNEL1} -l dwadw"\n"}
+MODE_L=${5:-${MODE_L_1}${MODE_L_2}${MODE_L_3}${MODE_L_4}${MODE_L_5}${MODE_L_6}}
+
+MODE_T_1=${5:-MODE ${CHANNEL1} +t ${PASSWORD1}"\n"}
+MODE_T_2=${5:-MODE ${CHANNEL1} +t"\n"}
+MODE_T_3=${5:-MODE ${CHANNEL1} t"\n"}
+MODE_T_4=${5:-MODE ${CHANNEL1} t"\n"}
+MODE_T_5=${5:-MODE ${CHANNEL1} -t"\n"}
+MODE_T_6=${5:-MODE ${CHANNEL1} -t dwadw"\n"}
+MODE_T=${5:-${MODE_T_1}${MODE_T_2}${MODE_T_3}${MODE_T_4}${MODE_T_5}${MODE_T_6}}
+
+MODE_I_1=${5:-MODE ${CHANNEL1} +i ${PASSWORD1}"\n"}
+MODE_I_2=${5:-MODE ${CHANNEL1} +i"\n"}
+MODE_I_3=${5:-MODE ${CHANNEL1} i"\n"}
+MODE_I_4=${5:-MODE ${CHANNEL1} i"\n"}
+MODE_I_5=${5:-MODE ${CHANNEL1} -i"\n"}
+MODE_I_6=${5:-MODE ${CHANNEL1} -i dwadw"\n"}
+MODE_I=${5:-${MODE_I_1}${MODE_I_2}${MODE_I_3}${MODE_I_4}${MODE_I_5}${MODE_I_6}}
+
+
+function	trap::clean()
+{
+	unset PASS
+	unset PORT
+	kill -9 ${PID_IRC}
+	trap - SIGINT
+	exit
+}
+
+if [ -z "$(pgrep ircserv)" ]; then
+	./ircserv "${PORT}" "${PASS}"  > exec.log 2>&1 &
+	PID_IRC=$!
+	trap "trap::clean" SIGINT
+fi
+
+
+BEGIN_REQ="PASS ${PASS}\nNICK ${NICK}\nUSER ${USER}\n${JOIN_1}${MODE_I}${MODE_K}${MODE_L}${MODE_T}"
+
+while [ 1 ]; do
+	read -p "request > " REQ
+	printf "${BEGIN_REQ}${REQ}\n" | nc localhost ${PORT} -q-1 
+done
+
+trap::clean
